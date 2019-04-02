@@ -1,0 +1,24 @@
+<resources>
+    <dimen name="fab_margin">16dp</dimen>
+    <dimen name="item_width">100dp</dimen>
+    <dimen name="item_height">20dp</dimen>
+
+    <dimen name="editor_title_height">30dp</dimen>
+    <dimen name="editor_title_text_size">20dp</dimen>
+    <dimen name="editor_field_name_height">20dp</dimen>
+    <dimen name="editor_field_name_margin_left">20dp</dimen>
+    <dimen name="editor_field_name_padding_top">5dp</dimen>
+    <dimen name="editor_field_name_text_size">12dp</dimen>
+    <dimen name="editor_field_height">40dp</dimen>
+    <dimen name="editor_field_text_size">15dp</dimen>
+
+    <dimen name="filter_title_height">35dp</dimen>
+    <dimen name="filter_title_text_size">20dp</dimen>
+    <dimen name="filter_title_left_padding">20dp</dimen>
+    <dimen name="filter_item_height">40dp</dimen>
+    <dimen name="filter_item_text_size">15dp</dimen>
+
+    <!-- Default screen margins, per the Android Design guidelines. -->
+    <dimen name="activity_horizontal_margin">16dp</dimen>
+    <dimen name="activity_vertical_margin">16dp</dimen>
+</resources>

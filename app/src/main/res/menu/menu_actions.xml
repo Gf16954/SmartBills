@@ -1,0 +1,38 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="com.gf169.smartbills.MainActivity">
+
+    <item
+        android:title="Что делать?"
+        android:enabled="false" />
+    <!--
+        <item
+            android:id="@+id/action_confirm"
+            android:title="Согласовать"
+            />
+        <item
+            android:id="@+id/action_reject"
+            android:title="Отказать"
+            />
+        <item
+            android:id="@+id/action_postpone"
+            android:title="Отложить"
+            />
+        <item
+            android:title=""
+            android:enabled="false"
+            />
+        <item
+            android:id="@+id/action_edit"
+            android:title="Изменить"
+            />
+        <item
+            android:title=""
+            android:enabled="false"
+            />
+        <item
+            android:id="@+id/action_delete"
+            android:title="Удалить"
+            />
+    -->
+</menu>

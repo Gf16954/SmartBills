@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <TextView
+        android:id="@+id/nameTextView"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/editor_field_name_height"
+        android:layout_marginLeft="@dimen/editor_field_name_margin_left"
+        app:layout_constraintTop_toTopOf="parent"
+        android:paddingTop="@dimen/editor_field_name_padding_top"
+        android:textSize="@dimen/editor_field_name_text_size" />
+
+    <android.support.v7.widget.AppCompatSpinner
+        android:id="@+id/valueSpinner"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/editor_field_height"
+        android:visibility="invisible"
+        app:layout_constraintTop_toBottomOf="@id/nameTextView"
+        android:textSize="@dimen/editor_field_text_size" />
+
+    <EditText
+        android:id="@+id/valueEditText"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/editor_field_height"
+        app:layout_constraintTop_toBottomOf="@id/nameTextView"
+        android:textSize="@dimen/editor_field_text_size" />
+
+    <!--  ToDo разобраться !!!
+        android:layout_height="@dimen/editor_field_height = 50 !!!"
+    -->
+
+</android.support.constraint.ConstraintLayout>
