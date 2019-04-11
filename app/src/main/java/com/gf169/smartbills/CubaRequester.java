@@ -7,7 +7,13 @@ import android.util.Log;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URLEncoder;
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -29,23 +35,27 @@ public class CubaRequester {
     private final String SERVER_URL_ALT = "http://billstest.groupstp.ru:9090/app/rest/api/";
     private final String REST_API_AUTHORIZATION = "Basic Y2xpZW50OnNlY3JldA==";
     private final String TOKENS_URL = "http://billstest.groupstp.ru:9090/app/rest/google/login";
+    public final String DOWNLOADED_FILE_NAME = "downloaded";
 
-    private static final int MAX_REQUEST_DURATION = 30; // sec  // TODO: 30.03.2019 в настройку
+    private static final int MAX_REQUEST_DURATION = 60; // sec  // TODO: 30.03.2019 в настройку
 
     String accessToken;
 
     private OkHttpClient client;
     private Request request;
     private Response response;
+    MediaType contentType;
     String responseBodyStr;
     private JSONObject responseBody;
-    private String postBody;
     volatile String error;
 
     private Runnable onResponseCallback;
 
     public CubaRequester(String userLogin, String userPassword) {
         client = new OkHttpClient.Builder()
+                .connectTimeout(MAX_REQUEST_DURATION + 1, TimeUnit.SECONDS)
+                .writeTimeout(MAX_REQUEST_DURATION + 1, TimeUnit.SECONDS)
+                .readTimeout(MAX_REQUEST_DURATION + 1, TimeUnit.SECONDS)
                 .build();
         getAccessToken(userLogin, userPassword);
     }
@@ -53,6 +63,7 @@ public class CubaRequester {
     public CubaRequester(String token, int tokenKind) {
         client = new OkHttpClient.Builder()
                 .build();
+//        client.connectionSpecs().get() connectTimeoutMillis();
         if (tokenKind == TOKEN_KIND_CUBA_ACCESS_TOKEN) {
             this.accessToken = token;
 //        } else if (tokenKind==TOKEN_KIND_GOOGLE_ACCESS_TOKEN) {
@@ -68,16 +79,6 @@ public class CubaRequester {
         bundle.putString("cubaAccessToken", accessToken);
     }
 
-    /*
-        public CubaRequester(Bundle bundle) {
-            if (bundle!=null) {
-                String at = bundle.getString("cubaAccessToken");
-                if (at != null) {
-                    new CubaRequester(at, TOKEN_KIND_CUBA_ACCESS_TOKEN);
-                }
-            }
-        }
-    */
     public CubaRequester(Bundle bundle) {
         this(bundle.getString("cubaAccessToken"), TOKEN_KIND_CUBA_ACCESS_TOKEN);
     }
@@ -88,7 +89,7 @@ public class CubaRequester {
 
     synchronized private boolean execRequest() {
         Log.d(TAG, "execRequest URL=" + request.url().toString() + " " + "method=" + request.method());
-        if (request.method().equals("POST")) Log.d(TAG, "Body=" + postBody);
+        if (request.method().equals("POST")) Log.d(TAG, "Body=" + request.body());
 
         error = null;
 
@@ -133,23 +134,47 @@ public class CubaRequester {
                     error = "status " + response.code() + " " + response.message()
                             + " " + response.body().string();
                 } else {
-                    responseBodyStr = response.body().string();
-                    Log.d(TAG, "execRequest2 responseBody length=" + responseBodyStr.length());
-                    logDLong(TAG, "execRequest2 responseBody\n" + responseBodyStr);
+                    contentType = response.body().contentType();
+                    Log.d(TAG, "execRequest2 response contentType=" + contentType);
+
+                    if (contentType.toString().startsWith("application/json")) {
+                        responseBodyStr = response.body().string();
+                        Log.d(TAG, "execRequest2 responseBody length=" + responseBodyStr.length());
+                        logDLong(TAG, "execRequest2 responseBody\n" + responseBodyStr);
+
+                    } else {  // В файл. full path файла должно быть в responseBodyStr
+                        if (responseBodyStr.endsWith(".?")) {
+                            responseBodyStr = responseBodyStr.replace("?", contentType.subtype());
+                        }
+                        File file = new File(responseBodyStr);
+
+                        InputStream is = response.body().byteStream();
+                        BufferedInputStream input = new BufferedInputStream(is);
+                        OutputStream output = new FileOutputStream(file);
+
+                        byte[] data = new byte[1024];
+                        int count;
+                        while ((count = input.read(data)) != -1) {
+                            output.write(data, 0, count);
+                        }
+                        output.flush();
+                        output.close();
+                        input.close();
+                    }
                 }
             }
         } catch (Exception e) {
+            error = e.getMessage() + "\n" + e.toString();
             e.printStackTrace();
-            error = e.getMessage();
         }
 
         Log.d(TAG, "execRequest2 " + (error == null ? "OK" : error));
     }
 
-    private void preProcessResponse() {
+    private void preProcessResponse() {  // Формирует JSON
         Log.d(TAG, "preProcessResponse");
 
-        if (error == null) {
+        if (error == null && contentType != null && contentType.toString().startsWith("application/json")) {
             try {
                 if (responseBodyStr.length() == 0) {  // delete такой возвращает
                     responseBody = null;
@@ -159,8 +184,8 @@ public class CubaRequester {
                     responseBody = new JSONObject(responseBodyStr);
                 }
             } catch (Exception e) {  // Может быть JSONException и responseBodyStr = null
+                error = e.getMessage() + "\n" + e.toString();
                 e.printStackTrace();
-                error = e.getMessage();
             }
         }
         try {
@@ -174,21 +199,22 @@ public class CubaRequester {
     private boolean getAccessToken(String userLogin, String userPassword) {
         Log.d(TAG, "getAccessToken " + userLogin + " " + userPassword);
 
-        MediaType mediaType = MediaType.parse("application/x-www-form-urlencoded; charset=utf-8");
-        postBody = "grant_type=password&username=" + userLogin + "&password=" + userPassword;
-        RequestBody body = RequestBody.create(mediaType, postBody);
         request = new Request.Builder()
                 .url(SERVER_URL + "oauth/token")
                 .header("Authorization", REST_API_AUTHORIZATION)
-                .post(body)
+                .post(RequestBody.create(
+                        MediaType.parse("application/x-www-form-urlencoded; charset=utf-8"),
+                        "grant_type=password&username=" + userLogin + "&password=" + userPassword))
                 .build();
         if (execRequest()) {
             try {
                 accessToken = responseBody.getString("access_token");
                 Log.d(TAG, "getAccessToken accessToken=" + accessToken);
                 return true;
-            } catch (JSONException e) {
-                Log.d(TAG, "getAccessToken JSONException " + e.getMessage());
+            } catch (Exception e) {  // JSON или NullPointer
+                error = e.getMessage() + "\n" + e.toString();
+                Log.d(TAG, "getAccessToken " + error);
+                e.printStackTrace();
             }
         } else {
             Log.d(TAG, "getAccessToken Error in execRequest");
@@ -199,11 +225,11 @@ public class CubaRequester {
     private boolean getAccessToken3(String googleIdToken) {  // Схема 3 - по Google id token'у
         Log.d(TAG, "getAccessToken3");
 
-        MediaType mediaType = MediaType.parse("application/json; charset=utf-8");
-        postBody = "{\"id_token\":\"" + googleIdToken + "\"}";
         request = new Request.Builder()
                 .url(TOKENS_URL)
-                .post(RequestBody.create(mediaType, postBody))
+                .post(RequestBody.create(
+                        MediaType.parse("application/json; charset=utf-8"),
+                        "{\"id_token\":\"" + googleIdToken + "\"}"))
                 .build();
         if (execRequest() && responseBody != null) {
             try {
@@ -263,10 +289,6 @@ public class CubaRequester {
     public boolean postJSON(String URLTail, String bodyStr) {
         Log.d(TAG, "postJSON " + URLTail + "\n" + bodyStr);
 
-//        MediaType mediaType = MediaType.parse("application/json");
-//        postBody = bodyStr;
-//        RequestBody body = RequestBody.create(MediaType.parse("application/json"), bodyStr);
-
         request = new Request.Builder()
                 .url(SERVER_URL + URLTail)
                 .header("Authorization", "Bearer " + accessToken)
@@ -281,21 +303,6 @@ public class CubaRequester {
         boolean r = postJSON(URLTail, bodyStr);
         SERVER_URL = serverURL;
         return r;
-/*
-    boolean postJSON2(String URLTail, String bodyStr) {
-        Log.d(TAG, "postJSON " + URLTail + "\n" + bodyStr);
-
-//        MediaType mediaType = MediaType.parse("application/json");
-//        postBody = bodyStr;
-        RequestBody body = RequestBody.create(MediaType.parse("application/json"), bodyStr);
-
-        request = new Request.Builder()
-                .url(SERVER_URL_2 + URLTail)
-                .header("Authorization", "Bearer " + accessToken)
-                .post(body)
-                .build();
-        return execRequest();
-*/
     }
 
     public boolean execJPQLPost(String entityName, String queryName, String parmsStr,
@@ -342,6 +349,48 @@ public class CubaRequester {
                 .delete()
                 .build();
         return execRequest();
+    }
+
+    String uploadFile(String fullPath) {
+        Log.d(TAG, "uploadFile " + fullPath);
+
+        File file = new File(fullPath);
+        if (!file.exists()) {
+            error = "Файл " + file + " не существует";
+            return null;
+        }
+        request = new Request.Builder()
+                .url(SERVER_URL + "files?name=" + fullPath.substring(fullPath.lastIndexOf("/") + 1))
+                .header("Authorization", "Bearer " + accessToken)
+                .post(RequestBody.create(MediaType.parse("application/octet-stream"), file))
+                .build();
+        if (execRequest()) {
+            try {
+                return responseBody.getString("id");
+            } catch (Exception e) {  // JSON или NullPointer - пустой responseBody
+                error = "uploadFile " + e.toString();
+            }
+        } else {
+            Log.d(TAG, "uploadFile Error in execRequest");
+        }
+        return null;
+    }
+
+    String downloadFile(String id, String dir, String name) {
+        Log.d(TAG, "downloadFile " + id + " " + dir + " " + name);
+
+        if (name == null) {
+            name = DOWNLOADED_FILE_NAME + ".?";
+        }
+        responseBodyStr = dir + "/" + name;
+        Log.d(TAG, "downloadFile " + responseBodyStr);
+
+        if (getSomething("files/" + id)) {
+            Log.d(TAG, "downloadFile " + responseBodyStr + " OK");
+            return responseBodyStr; // Full path
+        }
+        Log.d(TAG, "downloadFile FAILURE");
+        return null;
     }
 
     private static void logDLong(String tag, String msg) {  // Вывод очень длинной (>3878) строки

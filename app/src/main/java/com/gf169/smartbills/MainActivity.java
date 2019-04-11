@@ -25,9 +25,10 @@ import android.widget.Spinner;
 import com.google.android.gms.common.util.CollectionUtils;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 
 import static android.view.Menu.NONE;
+import static com.gf169.gfutils.Utils.grantMeAllDangerousPermissions;
+import static com.gf169.gfutils.Utils.iniUtils;
 import static com.gf169.smartbills.Common.Get;
 import static com.gf169.smartbills.Common.GetWorkflow;
 import static com.gf169.smartbills.Common.cr;
@@ -78,6 +79,9 @@ public class MainActivity extends AppCompatActivity
         curActivity = this;
         packageName = this.getPackageName();
 
+        iniUtils(curActivity, BuildConfig.DEBUG, curActivity);
+        grantMeAllDangerousPermissions();
+
         String s = null;
         try {
             s = packageName + ".Entities" +  // ...Entities$Query
@@ -124,6 +128,14 @@ public class MainActivity extends AppCompatActivity
             entityActions.execAction(item.getTitle().toString());
             return true;
         });
+/*
+        actionsPopup.setOnDismissListener(new PopupMenu.OnDismissListener() {
+            @Override
+            public void onDismiss(PopupMenu popupMenu) {
+
+            }
+        });
+*/
 
         fab = findViewById(R.id.fab);
         fab.setOnClickListener((View view) -> showActionsPopup(-1));
@@ -191,7 +203,7 @@ public class MainActivity extends AppCompatActivity
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
         if (curUser != null) {
-            entityActions = new EntityActions(null, entityListNumber, curUser);
+            entityActions = new EntityActions(null, entityListNumber);
             menu.findItem(R.id.action_new).setVisible(entityActions.actionIsPossible(ACTION_CREATE));
         }
         paintSearchIcon(menu.findItem(R.id.action_search));
@@ -208,7 +220,7 @@ public class MainActivity extends AppCompatActivity
 
             case R.id.action_search:
                 DialogFragment dlg = new FilterDialogFragment();
-                dlg.show(getFragmentManager(), "dlg");
+                dlg.show(getFragmentManager(), "FilterDialogFragment");
 //                AppCompatDialogFragment dlg = new FilterDialogFragment();
 //                dlg.show(getSupportFragmentManager(), "dlg");
                 return true;
@@ -288,7 +300,7 @@ public class MainActivity extends AppCompatActivity
             }
         }
 
-        entityActions = new EntityActions(entities, entityListNumber, curUser);
+        entityActions = new EntityActions(entities, entityListNumber);
 
         while (menu.size() > 1) { // Чистим, оставляем заголовок
             menu.removeItem(1);
@@ -324,7 +336,6 @@ public class MainActivity extends AppCompatActivity
                 finish();
                 return;
             }
-
             if (new Experiment().exec()) return;
 
             if ((curUser = Entities.ExtUser.build(null)) == null) {
@@ -480,7 +491,7 @@ public class MainActivity extends AppCompatActivity
 
             int index = (Integer) v2.getTag();
             int indexSelected = dataset.getSelected();
-            if (index == indexSelected) {  // deselect
+            if (index == indexSelected) {
                 showActionsPopup(index);
             } else {
                 dataset.setSelected(index);
@@ -563,6 +574,9 @@ public class MainActivity extends AppCompatActivity
                 eIn = (Get) mainEntityClass.newInstance();
                 ESMisc.iniEntity(eIn);
             } catch (Exception e) {
+                message(e.toString());
+                e.printStackTrace();
+                return;
             }
         } else {
             eIn = (Get) entity;
@@ -572,14 +586,13 @@ public class MainActivity extends AppCompatActivity
         try {
             eOut = (Get) mainEntityClass.newInstance();
         } catch (Exception e) {
+            message(e.toString());
             e.printStackTrace();
             return;
         }
         EditDialogFragment.ep = new EditDialogFragment.EditParameters(
                 editMode,
                 mainEntityName,
-                new ArrayList<>(Arrays.asList(ESMisc.mandatoryFields)),
-                new ArrayList<>(Arrays.asList(ESMisc.editableFields)),
                 eIn, eOut);
 
         if (!editMode.equals(EditDialogFragment.EDIT_MODE_VIEW)) { // Будет вызван showList
@@ -588,7 +601,7 @@ public class MainActivity extends AppCompatActivity
         }
         EditDialogFragment.isFragmentNewIstance = true;  // true - запуск фрагмента из программы, а не автоматическое пересоздание при перевороте
         EditDialogFragment dlg = new EditDialogFragment();
-        dlg.show(getFragmentManager(), "dlg");
+        dlg.show(getFragmentManager(), "EditDialogFragment");
     }
 
     void processEntity(Object[] entities) {
@@ -670,3 +683,29 @@ public class MainActivity extends AppCompatActivity
 // 16. После создания сразу в работу
 // 17. Предупреждение перед удалением
 // 18. Переделать фильтр - неудобный
+
+/*  TODO: 02.04.2019
++- 1. Прикрепление вложений 11.4 Сделано частично: только локальные, только картинки, только активный выбор
+2. Проталкивание заявки дальше из состояния Финансовый контроль
+3. Наведение красоты:
+    3.1. Подбор иконкок, на рабочий стол и в action bar
+    3.2. Подбор цветов
+    3.3. Точный учет размеров экрана, в т.ч. планшет/ландшафт (показ
+    текущей заявки рядом со списком, как в gmail)
+    3.4. Индикатор ожидания (песочные часы) везде где нужно: при логине,
+    при загрузке первой порции заявок, ...
+    3.5. На FAB (красной кнопке) писать число отмеченных заявок - трудно:(
+    3.6. Анимацию куда-нибудь
+4. Оптимизация везде
+    4.1. При редактировании/просмотре при скролинге списка полей спотыкается
+    ...
+5. Переделать интерфейс фильтра - неудобный, можно редактировать только последнюю запись
+6. Сортировка? Непонятно как делать
+7. Автоматическое обновление access token'a
+8. Решение проблемы несостоятельности страничной загрузки
+9. Перелогин
+10. Настойка? Непонятно, что туда пихать
+11. Хелп? Нужен? Или и так все ясно?
+12. Слова в ресурсы? Может ли понадобиться не русский интерфейс?
+13. Регистрация нового пользователя?
+*/

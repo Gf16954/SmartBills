@@ -23,10 +23,28 @@ class ESMisc {
         query.number = null;
     }
 
-    static final String[] mandatoryFields = {"Сумма", "Компания", "Инициатор"};  // Поля, обязательные к заполнению
-    static final String[] editableFields = {"Номер", "Тип платежа", "Проект", "Статья ДДС", "НДС",  // ОСТАЛЬНЫЕ редактируемые поля
-            "Наименование поставщика", "ИНН", "Срок платежа", "Назначение платежа",   // ,"Наличие в бюджете"
-            "Срочность", "Комментарий"};  // TODO: 23.03.2019 Добавить Вложения
+    public static String[] getMandatoryFields(String stepName) {
+        if (stepName == null) {
+            String a[] = {"Сумма", "Компания", "Инициатор"};
+            return a;
+        }
+        String a[] = {};
+        return a;
+    }
+
+    public static String[] getEditableFields(String stepName) {
+        if (stepName == null) {
+            String a[] = {"Номер", "Тип платежа", "Проект", "Статья ДДС", "НДС",  // ОСТАЛЬНЫЕ редактируемые поля
+                    "Наименование поставщика", "ИНН", "Срок платежа", "Назначение платежа",   // ,"Наличие в бюджете"
+                    "Срочность", "Комментарий", "Вложения"};
+            return a;
+        } else if (stepName.equals("Финансовый контроль")) {
+            String a[] = {"НДС", "Вложения"};  // ToDo Уточнить
+            return a;
+        }
+        String a[] = {};
+        return a;
+    }
 
     public static String processEntity(Object entity, String sOk, String sNotOk) {
         Entities.Query query = (Entities.Query) entity;

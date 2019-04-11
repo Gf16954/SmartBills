@@ -5,7 +5,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <TextView
-        android:id="@+id/nameTextView"
+        android:id="@+id/textViewName"
         android:layout_width="match_parent"
         android:layout_height="@dimen/editor_field_name_height"
         android:layout_marginLeft="@dimen/editor_field_name_margin_left"
@@ -14,19 +14,38 @@
         android:textSize="@dimen/editor_field_name_text_size" />
 
     <android.support.v7.widget.AppCompatSpinner
-        android:id="@+id/valueSpinner"
+        android:id="@+id/spinnerValue"
         android:layout_width="match_parent"
         android:layout_height="@dimen/editor_field_height"
         android:visibility="invisible"
-        app:layout_constraintTop_toBottomOf="@id/nameTextView"
+        app:layout_constraintTop_toBottomOf="@id/textViewName"
         android:textSize="@dimen/editor_field_text_size" />
 
     <EditText
-        android:id="@+id/valueEditText"
+        android:id="@+id/editTextValue"
         android:layout_width="match_parent"
         android:layout_height="@dimen/editor_field_height"
-        app:layout_constraintTop_toBottomOf="@id/nameTextView"
+        app:layout_constraintTop_toBottomOf="@id/textViewName"
         android:textSize="@dimen/editor_field_text_size" />
+
+    <TextView
+        android:id="@+id/textViewValue"
+        android:layout_width="0dp"
+        android:layout_height="@dimen/editor_field_height"
+        app:layout_constraintTop_toBottomOf="@id/textViewName"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toLeftOf="@id/textViewColectionSign"
+        android:textSize="@dimen/editor_field_text_size" />
+
+    <TextView
+        android:id="@+id/textViewColectionSign"
+        android:layout_width="20dp"
+        android:layout_height="@dimen/editor_field_height"
+        app:layout_constraintTop_toBottomOf="@id/textViewName"
+        app:layout_constraintLeft_toRightOf="@id/textViewValue"
+        app:layout_constraintRight_toRightOf="parent"
+        android:textSize="@dimen/editor_field_text_size"
+        android:text="*" />
 
     <!--  ToDo разобраться !!!
         android:layout_height="@dimen/editor_field_height = 50 !!!"

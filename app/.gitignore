@@ -1,4 +1,4 @@
 /build
-/src/_test
-/src/_androidTest
+/src/_test/
+/src/_androidTest/
 build.gradle

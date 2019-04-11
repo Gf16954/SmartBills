@@ -110,4 +110,47 @@ public class Utils {
                 message, Toast.LENGTH_LONG).show();
     }
 
+/*
+    public static String getPath(Context context, Uri uri) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            return getPathAPI19(context, uri);
+        }
+
+        String[] fileAttrColumns = {MediaStore.MediaColumns.DATA};
+        Cursor cursor = curActivity.getContentResolver().query(uri, fileAttrColumns,
+                null, null, null);
+        String filePath=null;
+        if (cursor.moveToFirst()) {
+            filePath=cursor.getString(cursor.getColumnIndex(fileAttrColumns[0]));
+        }
+        cursor.close();
+
+        return  filePath;
+    }
+*/
+/*
+    public static String getPathAPI19(Context context, Uri uri) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
+            return null;
+        }
+
+        curActivity.grantUriPermission(packageName,uri,Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+        String filePath = null;
+        String fileId = DocumentsContract.getDocumentId(uri);
+        // Split at colon, use second item in the array
+        String id = fileId.split(":")[1];
+        String[] column = {MediaStore.Images.Media.DATA};
+        String selector = MediaStore.Images.Media._ID + "=?";
+        Cursor cursor = context.getContentResolver().query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                column, selector, new String[]{id}, null);
+        int columnIndex = cursor.getColumnIndex(column[0]);
+        if (cursor.moveToFirst()) {
+            filePath = cursor.getString(columnIndex);
+        }
+        cursor.close();
+
+        return filePath;
+    }
+*/
 }

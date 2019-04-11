@@ -3,6 +3,7 @@ package com.gf169.smartbills;
 import java.util.ArrayList;
 
 import static com.gf169.smartbills.Common.curActivity;
+import static com.gf169.smartbills.Common.curUser;
 
 class EntityActions<T extends Common.GetWorkflow> {
     static final String TAG = "gfEntityActions";
@@ -18,45 +19,44 @@ class EntityActions<T extends Common.GetWorkflow> {
 
     static final String STATUS_DONE = "DONE";  // Процесс окончен
 
+    static Entities.Stage curStage;
+    static boolean userIsActorByStage;
+
     T[] entities;
     int entityListNumber;
-    static Entities.Stage stage;
-    static Entities.ExtUser user;
-    static boolean userIsActorByStage;
     boolean userIsActor;
 
     EntityActions(T[] entities,
-                  int entityListNumber, Entities.ExtUser user) {
+                  int entityListNumber) {
         this.entities = entities;
         this.entityListNumber = entityListNumber;
 
         if (entities == null) {  // Создание
-            stage = null;
-            this.user = user;
-            userIsActor = user.isActor(stage);
+            curStage = null;
+            userIsActor = curUser.isActor(curStage);
             return;
         }
 
         // По первой заявке
-        Entities.Stage stage = this.stage;
-
+        Entities.Stage oldStage = curStage;
         if (entities[0].getStepName() == null) {
-            stage = null;
-        } else if (this.stage == null || !entities[0].getStepName().equals(this.stage.name)) {
-            stage = Entities.Stage.build(entities[0].getStepName());
+            curStage = null;
+        } else if (curStage == null || !entities[0].getStepName().equals(curStage.name)) {
+            curStage = Entities.Stage.build(entities[0].getStepName());
         }
-        if (stage != this.stage || user != this.user) {  // Юзер может перелогиниться под другим именеем
-            userIsActorByStage = user.isActor(stage);
+        if (curStage == null && oldStage != null || curStage != null && !curStage.equals(oldStage)) {
+            userIsActorByStage = curUser.isActor(curStage);
         }
-        this.stage = stage;
-
-        userIsActor = true;
-        for (T entity : entities) {  // Actor во всех
-            userIsActor &= entity.hasActor(user);
+        userIsActor = userIsActorByStage;
+        if (!userIsActor) {
+            userIsActor = true;
+            for (T entity : entities) {  // Actor во всех
+                if (!entity.hasActor(curUser)) {
+                    userIsActor = false;
+                    break;
+                }
+            }
         }
-        userIsActor |= userIsActorByStage;
-
-        this.user = user;
     }
 
     private String getActionDisplayName(String action) {
@@ -76,7 +76,7 @@ class EntityActions<T extends Common.GetWorkflow> {
             case ACTION_EDIT:
                 return entities.length == 1;  // Или просмотр
             case ACTION_DELETE:
-                return userIsActor && stage == null;
+                return userIsActor && curStage == null;
             case ACTION_RUN:
                 if (!userIsActor) return false;
                 if (STATUS_DONE.equals(entities[0].getStatus())) return false;

@@ -1,6 +1,8 @@
 package com.gf169.smartbills;
 
 class Experiment {
+    static final String TAG = "gfExperiment";
+
     boolean exec() {
 //        cr.getSomething("metadata/entities/bills$Query/views"); if (true) return true;
 //        cr.getSomething("metadata/entities/bills$Query"); if (true) return true;
@@ -37,7 +39,9 @@ class Experiment {
 //        cr.getSomething("services"); if (true) return true; // Пусто
 
 //        cr.getSomething("metadata/enums"); if (true) return true;
-// {"name":"com.groupstp.workflowstp.entity.WorkflowEntityStatus","values":[{"name":"IN_PROGRESS","id":1,"caption":"В процессе"},{"name":"DONE","id":2,"caption":"Завершена"},{"name":"FAILED","id":3,"caption":"Ошибка"}]}
+//        {"name":"com.groupstp.workflowstp.entity.WorkflowEntityStatus","values":[{"name":"IN_PROGRESS","id":1,"caption":"В процессе"},{"name":"DONE","id":2,"caption":"Завершена"},{"name":"FAILED","id":3,"caption":"Ошибка"}]}
+
+//        cr.getEntitiesList("bills$ExternalFileDescriptor",null,null ,0,0,null,true,true,true); if (true) return true;
 
 /*
         if (cr.execJPQLPost("bills$Query"
@@ -99,6 +103,24 @@ class Experiment {
 /*
         for (int i=0; i<100; i++) logD2("qqqqqqq"); // 0.215-0.055 сек  Без formLogTag() 0.01 сек
         logD2("qqqqqqq"); if (true) return true;
+*/
+/*
+        cr.downloadFile("1e61d864-6187-3c04-5794-8bcc5d65ef4a",null,null);  if (true) return true;
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setDataAndType(Uri.parse(cr.responseBodyStr),"image/*");
+//            intent.addCategory(Intent.CATEGORY_OPENABLE);
+//            intent.setType("image/*");  // Нужно еще .pdf,.xls,.doc,.docx,.xlsx
+        ((Activity) curActivity).startActivityForResult(intent,111);
+*/
+/*
+        Uri uri;
+        uri=Uri.parse("content://com.android.providers.media.documents/document/image%3A93");
+        uri=Uri.parse("content://com.android.providers.downloads.documents/document/844");
+//        curActivity.grantUriPermission(packageName,uri,Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+        String fullPath=GetPath.getPath(curActivity, uri);
+        Log.d("qqqqq",fullPath);
+        if (true) return true;
 */
         return false;
     }

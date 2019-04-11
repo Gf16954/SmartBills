@@ -2,6 +2,7 @@ package com.gf169.smartbills;
 
 // Generated here: http://www.jsonschema2pojo.org/
 
+import android.net.Uri;
 import android.util.Log;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -18,9 +19,13 @@ import static com.gf169.smartbills.Common.Get;
 import static com.gf169.smartbills.Common.GetWorkflow;
 import static com.gf169.smartbills.Common.OM;
 import static com.gf169.smartbills.Common.cr;
+import static com.gf169.smartbills.Common.curActivity;
 import static com.gf169.smartbills.Common.searchEntities;
 import static com.gf169.smartbills.ESEntityLists.PROBLEM_QUERIES;
+import static com.gf169.smartbills.GetPath.getPath;
 import static com.gf169.smartbills.Utils.message;
+
+//import static com.gf169.smartbills.Utils.getPath;
 
 class Entities {
     static final String TAG = "gfEntities";
@@ -61,10 +66,8 @@ class Entities {
         public Clause clause;
         @JsonProperty("amount")
         public Double amount;
-        /* // TODO: 23.03.2019 Вернуть
-                @JsonProperty("images")
-                public List<Image> images = null;
-        */
+        @JsonProperty("images")
+        public List<ExternalFileDescriptor> images = null;
         @JsonProperty("workflow")
         public Workflow workflow;
         @JsonProperty("taxNumber")
@@ -102,8 +105,6 @@ class Entities {
         public String getStepName() {
             return stepName;
         }
-
-        ;
 
         @Override
         public String getStatus() {
@@ -182,10 +183,10 @@ class Entities {
         }
     }
 
-    public static class Image {
+    public static class ExternalFileDescriptor implements Get {
 
         @JsonProperty("_entityName")
-        public String _entityName;
+        public String _entityName;   // bills$ExternalFileDescriptor
         @JsonProperty("_instanceName")
         public String _instanceName;
         @JsonProperty("id")
@@ -198,6 +199,33 @@ class Entities {
         public String name;
         @JsonProperty("createDate")
         public Date createDate;
+
+        @Override
+        public String getId() {
+            return id;
+        }
+
+        @Override
+        public String getInstanceName() {
+            return name;    // В _instanceName еще прицеплено время создания в конце
+        }
+
+        @Override
+        public String toString() {
+            return getInstanceName();
+        }
+
+        ExternalFileDescriptor() {
+        }
+
+        // Если есть какой-нибудь конструктор, то должен быть и пустой, иначе Object Mapper отваливается
+
+        ExternalFileDescriptor(Uri uri) {
+            externalCode = getPath(curActivity, uri); // full path! Только при создании, с сервера приедет null
+            if (externalCode != null && externalCode.contains("/")) {
+                _instanceName = name = externalCode.substring(externalCode.lastIndexOf("/") + 1);  // file name
+            }
+        }
     }
 
     public static class Employee implements Get {
@@ -402,7 +430,7 @@ class Entities {
 
         @Override
         public boolean equals(Object o) {
-            return o != null && ((ExtUser) o).id.equals(id);
+            return o != null && ((Stage) o).id.equals(id);
         }
 
         static Stage build(CharSequence name) {

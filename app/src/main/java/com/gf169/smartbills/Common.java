@@ -43,7 +43,6 @@ public class Common {
     static String packageName;
     static MainActivity curActivity; // Не уберу!
     static CubaRequester cr;
-    //    static String mainEntityName; // В ESMisc
     static Class mainEntityClass;
     static Entities.ExtUser curUser;
     static Entities.Employee curEmployee;
@@ -126,6 +125,7 @@ public class Common {
         public String description;
         public String attributeType;
         public String type;
+        public String cardinality;
 
         ArrayList<Object> possibleValues;
         Object value;
@@ -155,16 +155,17 @@ public class Common {
         }
 
         boolean spinnerNeeded() {
-            return ATTR_TYPE_ASSOCIATION.equals(attributeType) ||
+            return ATTR_TYPE_ASSOCIATION.equals(attributeType) && !isCollection() ||
                     ATTR_TYPE_DATA.equals(attributeType) && TYPE_BOOLEAN.equals(type) ||
                     ATTR_TYPE_ENUM.equals(attributeType);
         }
 
         Class getReferencedClass() {
-            try {
-                String referencedEntityClassName = packageName + ".Entities" +  // com.gf16954.smartbills.Entities$Employee
-                        type.substring(type.indexOf("$"));
-                return Class.forName(referencedEntityClassName);
+            try {  // bills$Employee -> com.gf16954.smartbills.Entities$Employee
+                String s = type.substring(type.indexOf("$"));
+//                if (s.endsWith("$ExternalFileDescriptor")) s="$Image";
+                s = packageName + ".Entities" + s;
+                return Class.forName(s);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -219,25 +220,22 @@ public class Common {
             }
             return a;
         }
+
+        boolean isCollection() {
+            return cardinality.endsWith("_TO_MANY");
+        }
+
+        boolean isAttachments() {
+            return type.endsWith("$ExternalFileDescriptor");
+        }
     }
 
-    static ArrayList<EntityField> formEntityFieldsArray(
-            String entityName, ArrayList<String> mandatoryFields, ArrayList<String> editableFields) {
+    static ArrayList<EntityField> formEntityFieldsArray(String entityName) {
         ArrayList<EntityField> r;
 
-        // bills$Query -> com.gf16954.smartbills.Entities$Query
-        String className = packageName + ".Entities" +
-                entityName.substring(entityName.indexOf("$"));
-
         HashMap<String, Field> classFieldsMap = new HashMap<>();
-        try {
-            for (Field f : Class.forName(className).getDeclaredFields()) {
-                classFieldsMap.put(f.getName(), f);
-            }
-        } catch (ClassNotFoundException e) {  // Моя ошибка! Надо чтобы отвалился - не знаю как
-            e.printStackTrace();
-            Utils.message("formEntityFieldsArray ClassNotFoundException");
-            return new ArrayList<>();
+        for (Field f : mainEntityClass.getDeclaredFields()) {
+            classFieldsMap.put(f.getName(), f);
         }
 
         if (cr.getSomething("metadata/entities/" + entityName)) {
@@ -245,9 +243,9 @@ public class Common {
                 String s = cr.responseBodyStr;
                 s = s.substring(s.indexOf("["));
                 s = s.substring(0, s.length() - 1);
-                r = OM.readValue(s,
-                        new TypeReference<ArrayList<EntityField>>() {
-                        });
+                r = OM.readValue(s, new TypeReference<ArrayList<EntityField>>() {
+                });
+
                 for (int i = r.size() - 1; i >= 0; i--) {
                     EntityField ef = r.get(i);
                     Field f = classFieldsMap.get(ef.name);
@@ -255,22 +253,15 @@ public class Common {
                         r.remove(i);
                         continue;
                     }
-                    if (mandatoryFields != null && mandatoryFields.contains(ef.description)) {
-                        ef.editability = EDITABILITY_MANDATORY;
-                    } else if (editableFields != null && editableFields.contains(ef.description)) {
-                        ef.editability = EDITABILITY_EDITABLE;
-                    } else {
-                        ef.editability = EDITABILITY_NOT_EDITABLE;
-                    }
                     ef.reflectField = f;
                     ef.reflectField.setAccessible(true);
                 }
-                Collections.sort(r, (Object lhs, Object rhs) -> // По убыванию editability, по возрастанию названий
-                        // -1 - less than, 1 - greater than, 0 - equal, all inversed for descending
-                        -1000 * ((EntityField) lhs).editability.compareTo(((EntityField) rhs).editability)
-                                + ((EntityField) lhs).description.compareTo(((EntityField) rhs).description)
+                Collections.sort(r, (Object lhs, Object rhs) -> // В алфафитном порядке русских названий
+                        ((EntityField) lhs).description.compareTo(((EntityField) rhs).description)
                 );
+
                 return r;
+
             } catch (Exception e) {
                 e.printStackTrace();
                 Utils.message("Ошибка при получении списка полей сущности " +
@@ -364,13 +355,12 @@ public class Common {
                 result = OM.readValue(cr.responseBodyStr,
                         OM.getTypeFactory().constructCollectionType(Set.class, cl));
             } catch (Exception e) {
+                message(e.toString());
                 e.printStackTrace();
-                message(e.getMessage());
             }
         } else {
             message("Ошибка при поиске сущностей");
         }
-
         Log.d(TAG, "searchEntities " + (result == null ? "null" : result.toString()));
         return result;
     }

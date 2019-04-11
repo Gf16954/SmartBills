@@ -18,6 +18,8 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 
 import static android.text.InputType.TYPE_CLASS_DATETIME;
 import static android.text.InputType.TYPE_CLASS_NUMBER;
@@ -33,6 +35,7 @@ import static com.gf169.smartbills.Common.EDITABILITY_NOT_EDITABLE;
 import static com.gf169.smartbills.Common.EntityField;
 import static com.gf169.smartbills.Common.EnumItem;
 import static com.gf169.smartbills.Common.Get;
+import static com.gf169.smartbills.Common.GetWorkflow;
 import static com.gf169.smartbills.Common.OM;
 import static com.gf169.smartbills.Common.Reference;
 import static com.gf169.smartbills.Common.SDF_OUR;
@@ -52,7 +55,7 @@ import static com.gf169.smartbills.ESMisc.mainEntityName;
 
 public class EditDialogFragment extends DialogFragment
         implements View.OnClickListener, View.OnFocusChangeListener {
-    static final String TAG = "gfEntityEditDialog";
+    static final String TAG = "gfEditDialogFragment";
 
     static final String EDIT_MODE_VIEW = "0";
     static final String EDIT_MODE_EDIT = "1";
@@ -61,31 +64,27 @@ public class EditDialogFragment extends DialogFragment
     static boolean isFragmentNewIstance;    // true - запуск фрагмента из программы,
     // а не автоматическое пересоздание при перевороте
     // ToDo сохранение/восстановление
+
+    static ArrayList<EntityField> mainEntityFields; // Все поля этой сущности
+    static String curStepName;
+    static ArrayList<EntityField> entityFields; // Поля этой сущности с установленными editability и отсортированные
+
     View view;  // корневой этого фрагмента
     ListView fieldListView;  // главный ListView
     View curFocusedView; // view текущего itme'a
 
-    static ArrayList<EntityField> entityFieldsBig; // Все поля этой сущности. static чтобы не сбрасывался при выходе и последующем входе
-    // А также сохраняется при перевороте! Можно не делать onSaveInstanceState !
-    static ArrayList<EntityField> entityFieldsSmall;  // Только редактируемые поля - для создания записи
-    static ArrayList<EntityField> entityFields;  // Рабочий
-
     public static class EditParameters {
         String editMode;
-        String entityName;          // bills$Query
-        ArrayList<String> mandatoryFields; // Поля, обязательные к заполнению
-        ArrayList<String> editableFields; //  ОСТАЛЬНЫЕ редактируемые поля
+        String entityName;
+        String stepName;
 
         Get objIn;
         Get objOut;
 
-        public EditParameters(String editMode, String entityName,
-                              ArrayList<String> mandatoryFields, ArrayList<String> editableFields,
-                              Get objIn, Get objOut) {
+        public EditParameters(String editMode, String entityName, Get objIn, Get objOut) {
             this.editMode = editMode;
             this.entityName = entityName;
-            this.mandatoryFields = mandatoryFields;
-            this.editableFields = editableFields;
+            this.stepName = ((GetWorkflow) objIn).getStepName();
             this.objIn = objIn;
             this.objOut = objOut;
         }
@@ -143,11 +142,20 @@ public class EditDialogFragment extends DialogFragment
         view = inflater.inflate(R.layout.fragment_edit, container);
 //        adjustFragmentSize(view,1F, 1F);  // TODO: 31.03.2019 Разобраться и заставить работать!!! 
 
-        view.findViewById(R.id.buttonOK).setOnClickListener(this);
-        view.findViewById(R.id.buttonCancel).setOnClickListener(this);
-
         showList();
 
+        if (ep.editMode.equals(EDIT_MODE_VIEW)) {
+            view.findViewById(R.id.buttonOK).setVisibility(View.INVISIBLE);
+            view.findViewById(R.id.buttonCancel).setVisibility(View.INVISIBLE);
+            view.findViewById(R.id.buttonActions).setVisibility(View.VISIBLE);
+            view.findViewById(R.id.buttonActions).setOnClickListener(this);
+        } else {
+            view.findViewById(R.id.buttonOK).setVisibility(View.VISIBLE);
+            view.findViewById(R.id.buttonCancel).setVisibility(View.VISIBLE);
+            view.findViewById(R.id.buttonActions).setVisibility(View.INVISIBLE);
+            view.findViewById(R.id.buttonOK).setOnClickListener(this);
+            view.findViewById(R.id.buttonCancel).setOnClickListener(this);
+        }
         return view;
     }
 
@@ -172,7 +180,7 @@ public class EditDialogFragment extends DialogFragment
 
     @Override
     public void onClick(View v) {  // Button
-        if (!ep.editMode.equals(EDIT_MODE_VIEW) && v == v.findViewById(R.id.buttonOK)) {
+        if (v == v.findViewById(R.id.buttonOK)) {
 
             storeFieldValue(curFocusedView);
 
@@ -186,8 +194,15 @@ public class EditDialogFragment extends DialogFragment
 //                        ((MainActivity) getActivity()).dataset.getMarkedItemIdsString());
                         null);
             }
+            dismiss();
+
+        } else if (v == v.findViewById(R.id.buttonCancel)) {
+            dismiss();
+
+        } else {  // Actions
+            curActivity.showActionsPopup(curActivity.dataset.getSelected());
+            dismiss();
         }
-        dismiss();
     }
 
     @Override
@@ -207,29 +222,34 @@ public class EditDialogFragment extends DialogFragment
             SpinnerContainer[] scV = {null};
             AppCompatSpinner sV;
             EditText etV;
+            TextView twV;
+            TextView twV2;
 
             if (itemView == null) {
                 itemView = LayoutInflater.from(getContext()).inflate(R.layout.field_item, parent,
                         false);
-                (sV = itemView.findViewById(R.id.valueSpinner)).setOnFocusChangeListener(EditDialogFragment.this);
-                (etV = itemView.findViewById(R.id.valueEditText)).setOnFocusChangeListener(EditDialogFragment.this);
+                (sV = itemView.findViewById(R.id.spinnerValue)).setOnFocusChangeListener(EditDialogFragment.this);
+                (etV = itemView.findViewById(R.id.editTextValue)).setOnFocusChangeListener(EditDialogFragment.this);
             } else {
-                (sV = itemView.findViewById(R.id.valueSpinner)).clearFocus();
-                (etV = itemView.findViewById(R.id.valueEditText)).clearFocus();
+                (sV = itemView.findViewById(R.id.spinnerValue)).clearFocus();
+                (etV = itemView.findViewById(R.id.editTextValue)).clearFocus();
             }
+            twV = itemView.findViewById(R.id.textViewValue);
+            twV2 = itemView.findViewById(R.id.textViewColectionSign);
 
             EntityField item = getItem(position);
             itemView.setTag(position);
             paintItem(itemView, item);
 
-            ((TextView) itemView.findViewById(R.id.nameTextView)).setText(item.description);
+            ((TextView) itemView.findViewById(R.id.textViewName)).setText(item.description);
 
-            sV.setEnabled(!ep.editMode.equals(EDIT_MODE_VIEW) && !item.editability.equals(EDITABILITY_NOT_EDITABLE));
-            etV.setEnabled(!ep.editMode.equals(EDIT_MODE_VIEW) && !item.editability.equals(EDITABILITY_NOT_EDITABLE));
-
-            if (!item.editability.equals(EDITABILITY_NOT_EDITABLE) && item.spinnerNeeded()) {
+            if (item.spinnerNeeded()) {
                 sV.setVisibility(View.VISIBLE);
                 etV.setVisibility(View.INVISIBLE);
+                twV.setVisibility(View.INVISIBLE);
+                twV2.setVisibility(View.INVISIBLE);
+
+                sV.setEnabled(!ep.editMode.equals(EDIT_MODE_VIEW) && !item.editability.equals(EDITABILITY_NOT_EDITABLE));
 
                 if (item.possibleValues == null) {
                     item.possibleValues = item.formReferencesArray(true);
@@ -237,7 +257,7 @@ public class EditDialogFragment extends DialogFragment
                 scV[0] = new SpinnerContainer(
                         getActivity(),
                         sV,
-                        item.possibleValues,  // ToDo оптимаизировать - загружать только по click'y !!!
+                        item.possibleValues,  // ToDo оптимазировать - загружать только по click'y !!!
                         item.value,
                         new AdapterView.OnItemSelectedListener() {
                             @Override
@@ -245,7 +265,11 @@ public class EditDialogFragment extends DialogFragment
                                 scV[0].defaultOnItemSelectedListener.onItemSelected(adapterView, view, i, l);
 
                                 if (scV[0].selectedItem != null) {
-                                    storeFieldValue(scV[0]);
+                                    if (item.isCollection()) {
+                                        showObject(scV[0].selectedItem);
+                                    } else {
+                                        storeFieldValue(scV[0]);
+                                    }
                                 }
                             }
 
@@ -253,9 +277,26 @@ public class EditDialogFragment extends DialogFragment
                             public void onNothingSelected(AdapterView<?> adapterView) {
                             }
                         });
+
+            } else if (item.isCollection()) {
+                sV.setVisibility(View.INVISIBLE);
+                etV.setVisibility(View.INVISIBLE);
+                twV.setVisibility(View.VISIBLE);
+                twV2.setVisibility(View.VISIBLE);
+
+                Log.d("qqqq", item.description);
+                twV.setText(item.value == null ? "" : collectionStr(item.value));
+                twV.setOnClickListener((v) -> editCollection(v, item,
+                        ep.editMode.equals(EDIT_MODE_VIEW) || item.editability.equals(EDITABILITY_NOT_EDITABLE)));
+                twV2.setOnClickListener((v) -> editCollection(v, item,
+                        ep.editMode.equals(EDIT_MODE_VIEW) || item.editability.equals(EDITABILITY_NOT_EDITABLE)));
             } else {
                 sV.setVisibility(View.INVISIBLE);
                 etV.setVisibility(View.VISIBLE);
+                twV.setVisibility(View.INVISIBLE);
+                twV2.setVisibility(View.INVISIBLE);
+
+                etV.setEnabled(!ep.editMode.equals(EDIT_MODE_VIEW) && !item.editability.equals(EDITABILITY_NOT_EDITABLE));
 
                 etV.setText(item.value == null ? null : item.value.toString());
                 etV.setInputType(
@@ -280,12 +321,19 @@ public class EditDialogFragment extends DialogFragment
     }
 
     void paintItem(View itemView, EntityField item) {
+
         int color = getResources().getColor(
                 !ep.editMode.equals(EDIT_MODE_VIEW) && item.editability.equals(EDITABILITY_MANDATORY) ?
                         R.color.colorFieldNotEmpty :
                         !ep.editMode.equals(EDIT_MODE_VIEW) && item.editability.equals(EDITABILITY_EDITABLE) ?
                                 R.color.colorFieldEditable :
                                 R.color.colorFieldNotEditable);
+/*
+        int color = getResources().getColor(
+                item.editability.equals(EDITABILITY_MANDATORY) ? R.color.colorFieldNotEmpty :
+                item.editability.equals(EDITABILITY_EDITABLE) ? R.color.colorFieldEditable :
+                R.color.colorFieldNotEditable);
+*/
         itemView.setBackgroundColor(color);
     }
 
@@ -301,36 +349,72 @@ public class EditDialogFragment extends DialogFragment
         }
     }
 
+    static ArrayList<EntityField> updateEntityFieldsArray(
+            ArrayList<EntityField> entityFieldsArray, String stepName, boolean toSort) {
+
+        ArrayList<EntityField> r = new ArrayList<>(entityFieldsArray);
+        ArrayList<String> mandatoryFields = new ArrayList<>(Arrays.asList(ESMisc.getMandatoryFields(stepName)));
+        ArrayList<String> editableFields = new ArrayList<>(Arrays.asList(ESMisc.getEditableFields(stepName)));
+
+        for (int i = r.size() - 1; i >= 0; i--) {
+            EntityField ef = r.get(i);
+
+            if (mandatoryFields.contains(ef.description)) {
+                ef.editability = EDITABILITY_MANDATORY;
+            } else if (editableFields.contains(ef.description)) {
+                ef.editability = EDITABILITY_EDITABLE;
+            } else {
+                ef.editability = EDITABILITY_NOT_EDITABLE;
+            }
+        }
+        if (toSort) {
+            Collections.sort(r, (Object lhs, Object rhs) -> // По убыванию editability, по возрастанию названий
+                    // -1 - less than, 1 - greater than, 0 - equal, all inversed for descending
+                    -1000 * ((EntityField) lhs).editability.compareTo(((EntityField) rhs).editability)
+                            + ((EntityField) lhs).description.compareTo(((EntityField) rhs).description));
+        }
+        return r;
+    }
+
     void showList() {
         Log.d(TAG, "showList");
 
         getDialog().setTitle(ep.objIn.toString());
 
-        if (entityFieldsBig == null) {
-            entityFieldsBig = formEntityFieldsArray(
-                    mainEntityName, ep.mandatoryFields, ep.editableFields);
-
-            entityFieldsSmall = new ArrayList<>();
-            for (EntityField ef : entityFieldsBig) {
-                if (!ef.editability.equals(EDITABILITY_NOT_EDITABLE)) {
-                    entityFieldsSmall.add(ef);
-                }
-            }
+        if (mainEntityFields == null) {
+            mainEntityFields = formEntityFieldsArray(mainEntityName);
+            curStepName = null;
+            mainEntityFields = updateEntityFieldsArray(mainEntityFields, curStepName, true);  // Порядок полей удет постоянный
+            entityFields = new ArrayList<>(mainEntityFields);
         }
-        if (ep.editMode.equals(EDIT_MODE_CREATION)) {
-            entityFields = entityFieldsSmall;
-        } else {
-            entityFields = entityFieldsBig;
+        if (ep.stepName != curStepName) {
+            curStepName = ep.stepName;
+            entityFields = updateEntityFieldsArray(mainEntityFields, curStepName, false);  // Только устанавливаем editability
         }
         if (isFragmentNewIstance) {
-            for (EntityField ef : entityFields) {  // Установка значений из objIn
+            int editableFieldsCount = 0;
+
+            for (int i = entityFields.size() - 1; i >= 0; i--) {   // Установка значений из objIn
+                EntityField ef = entityFields.get(i);
+
+                if (curStepName == null && ef.editability.equals(EDITABILITY_NOT_EDITABLE)) {
+                    entityFields.remove(i);  // Они пустые
+                    continue;
+                } else if (!ef.editability.equals(EDITABILITY_NOT_EDITABLE)) {
+                    editableFieldsCount++;
+                }
+
                 ef.value = null;  // Очищаем с прошлого раза
                 if (ef.reflectField != null) {
                     try {
                         Object o = ef.reflectField.get(ep.objIn);  // Значение поля
                         if (o != null) {
                             if (ef.attributeType.equals(ATTR_TYPE_ASSOCIATION)) {  // o - ссылаемый объект
-                                ef.value = new Reference((Get) o);
+                                if (!ef.isCollection()) {
+                                    ef.value = new Reference((Get) o);
+                                } else {
+                                    ef.value = o;
+                                }
                             } else if (ef.attributeType.equals(ATTR_TYPE_ENUM)) { // o - строка, name - CASH, а надо Безналичный
                                 if (ef.possibleValues == null) {
                                     // TODO: 31.03.2019 Оптимизировать!
@@ -356,11 +440,13 @@ public class EditDialogFragment extends DialogFragment
                     }
                 }
             }
+            if (ep.editMode.equals(EDIT_MODE_EDIT) && editableFieldsCount == 0) {
+                ep.editMode = EDIT_MODE_VIEW;
+            }
         }
         isFragmentNewIstance = false;
 
         ArrayAdapter<EntityField> adapter = new EntityFieldArrayAdapter(getActivity(), entityFields);
-
         fieldListView = view.findViewById(R.id.fieldItems);
         fieldListView.setAdapter(adapter);
     }
@@ -369,9 +455,11 @@ public class EditDialogFragment extends DialogFragment
         Log.d(TAG, "entity2Json");
 
         String r = "{";
-        String s;
+        String s;  // ToDo StringBuilder?
 
-        for (EntityField ef : entityFieldsSmall) {  // Small
+        for (EntityField ef : entityFields) {
+            if (ef.editability.equals(EDITABILITY_NOT_EDITABLE)) continue;
+
             if (ef.value == null) continue;
             if (ef.value.toString() == null) continue;
             if (ef.value.toString().trim().equals("")) continue;
@@ -384,7 +472,15 @@ public class EditDialogFragment extends DialogFragment
             } else if (ef.attributeType.equals(ATTR_TYPE_DATA) && ef.type.equals(TYPE_DATETIME)) {
                 // Не может быть редактируемым
             } else if (ef.attributeType.equals(ATTR_TYPE_ASSOCIATION)) {
-                s = s + "{\"id\":\"" + ((Reference) ef.value).id + "\"},";
+                if (!ef.isCollection()) {
+                    s = s + "{\"id\":\"" + ((Reference) ef.value).id + "\"},";
+                } else {
+                    s = s + "[";
+                    for (Get obj : (ArrayList<Get>) ef.value) {
+                        s = s + "{\"id\":\"" + obj.getId() + "\"},";
+                    }
+                    s = (s + "],").replace(",]", "]");
+                }
             } else if (ef.attributeType.equals(ATTR_TYPE_ENUM)) {
                 s = s + "\"" + ((EnumItem) ef.value).name + "\",";
             } else {
@@ -419,4 +515,23 @@ public class EditDialogFragment extends DialogFragment
         }
         return false;
     }
+
+    void showObject(Object o) {
+    }
+
+    void editCollection(View v, EntityField entityField, boolean viewOnly) {
+        EditCollectionDialogFragment.ef = entityField;
+        EditCollectionDialogFragment.captionView = (TextView) v;
+        EditCollectionDialogFragment.viewOnly = viewOnly;
+        EditCollectionDialogFragment.isFragmentNewIstance = true;  // true - запуск фрагмента из программы, а не автоматическое пересоздание при перевороте
+
+        DialogFragment dlg = new EditCollectionDialogFragment();
+        dlg.show(getFragmentManager(), "EditCollectionDialogFragment");
+    }
+
+    static String collectionStr(Object collection) {
+        return "[" + ((ArrayList<Object>) collection).size() + "]";
+
+    }
+
 }

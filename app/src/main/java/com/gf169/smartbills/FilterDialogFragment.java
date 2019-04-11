@@ -50,13 +50,14 @@ import static com.gf169.smartbills.Utils.message;
 
 //public class FilterDialogFragment extends AppCompatDialogFragment implements View.OnClickListener {
 public class FilterDialogFragment extends DialogFragment implements View.OnClickListener {
-    static final String TAG = "gfEntityFilterDialog";
+    static final String TAG = "gfFilterDialogFragment";
 
     static final String OPERATOR_SET = "Установлен";
     static final String OPERATOR_NOT_SET = "НЕ установлен";
 
     View view;  // корневой этого фрагмента
 
+    static ArrayList<EntityField> mainEntityFields; // Все поля этой сущности
     ListView filterItemList;
     static ArrayList<FilterItem> filterItems;  // static чтобы не сбрасывался при выходе и последующем входе
     // А также сохраняется при перевороте! Можно не делать onSaveInstanceState !
@@ -343,8 +344,13 @@ public class FilterDialogFragment extends DialogFragment implements View.OnClick
         if (filterItems == null) {
             filterItems = new ArrayList<>(
                     Arrays.asList(new FilterItem(null, null, null, true)));  // Пустой для ввода
-            entityFields = formEntityFieldsArray(mainEntityName, null, null);
-            entityFields.add(0, new EntityField(null, null, null, null)); // Пустой в начало
+            if (mainEntityFields == null) {
+                mainEntityFields = formEntityFieldsArray(mainEntityName);
+            }
+            if (entityFields == null) {
+                entityFields = new ArrayList<>(mainEntityFields);
+                entityFields.add(0, new EntityField(null, null, null, null)); // Пустой в начало
+            }
         }
         ArrayAdapter<FilterItem> adapter = new FilterItemsArrayAdapter(getActivity(), filterItems);
         filterItemList = view.findViewById(R.id.filterItems);
@@ -385,7 +391,8 @@ public class FilterDialogFragment extends DialogFragment implements View.OnClick
 
             ArrayList<Object> r = new ArrayList<>();
 
-            if (entityField.attributeType.equals(ATTR_TYPE_ASSOCIATION)) {  // Ссылка
+            if (entityField.attributeType.equals(ATTR_TYPE_ASSOCIATION) &&
+                    !entityField.isCollection()) {  // Ссылка
 //            r = new ArrayList<>(java.util.Arrays.asList("=", "<>", "содержит", "НЕ содержит",
 //                    "начинается с", "заканчивается на"));
                 r = new ArrayList<>(java.util.Arrays.asList("=", "<>"));
@@ -419,18 +426,18 @@ public class FilterDialogFragment extends DialogFragment implements View.OnClick
         }
 
         boolean test(Object entity) {
-            // Если вызван для контроля правильности фильтра, должен вернуть true если ошибка в фильтре
-
             Log.d(TAG, "test " + entityField + " " + operator + " " + value);
 
             try {
                 Object o = entityField.reflectField.get(entity);
 
                 if (operator.equals(OPERATOR_SET)) {
-                    return o != null;
+                    return !entityField.isCollection() && o != null ||
+                            entityField.isCollection() && o != null && !((ArrayList<Object>) o).isEmpty();
                 }
                 if (operator.equals(OPERATOR_NOT_SET)) {
-                    return o == null;
+                    return !entityField.isCollection() && o == null ||
+                            entityField.isCollection() && (o == null || ((ArrayList<Object>) o).isEmpty());
                 }
                 if (o == null) return false; // null ни к чему не подходит
 
@@ -480,17 +487,6 @@ public class FilterDialogFragment extends DialogFragment implements View.OnClick
                     if (!testString((String) o, operator, ((EnumItem) value).name))
                         return false;  // name!
                 }
-/*
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-                return false;
-            } catch (NoSuchMethodException e) {
-                e.printStackTrace();
-                return false;
-            } catch (InvocationTargetException e) {
-                e.printStackTrace();
-                return false;
-*/
             } catch (Exception e) {
                 e.printStackTrace();
                 return false;
