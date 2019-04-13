@@ -351,7 +351,7 @@ public class CubaRequester {
         return execRequest();
     }
 
-    String uploadFile(String fullPath) {
+    String uploadFile(String fullPath, String displayName) {
         Log.d(TAG, "uploadFile " + fullPath);
 
         File file = new File(fullPath);
@@ -360,7 +360,9 @@ public class CubaRequester {
             return null;
         }
         request = new Request.Builder()
-                .url(SERVER_URL + "files?name=" + fullPath.substring(fullPath.lastIndexOf("/") + 1))
+                .url(SERVER_URL + "files?name=" + URLEncoder.encode(
+                        displayName != null ? displayName :
+                                fullPath.substring(fullPath.lastIndexOf("/") + 1)))
                 .header("Authorization", "Bearer " + accessToken)
                 .post(RequestBody.create(MediaType.parse("application/octet-stream"), file))
                 .build();

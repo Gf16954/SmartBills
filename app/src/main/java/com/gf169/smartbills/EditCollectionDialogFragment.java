@@ -7,7 +7,6 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.v4.content.FileProvider;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
@@ -18,7 +17,6 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import java.io.File;
 import java.util.ArrayList;
 
 import static com.gf169.smartbills.Common.EntityField;
@@ -26,6 +24,8 @@ import static com.gf169.smartbills.Common.cr;
 import static com.gf169.smartbills.Common.curActivity;
 import static com.gf169.smartbills.EditDialogFragment.collectionStr;
 import static com.gf169.smartbills.Utils.message;
+import static com.gf169.smartbills.Utils.pickFile;
+import static com.gf169.smartbills.Utils.viewFile;
 
 //public class FilterDialogFragment extends AppCompatDialogFragment implements View.OnClickListener {
 public class EditCollectionDialogFragment extends DialogFragment
@@ -132,7 +132,7 @@ public class EditCollectionDialogFragment extends DialogFragment
 
             twV[0] = itemView.findViewById(R.id.textViewSelectedValue);
             twV[0].setText(collectionItem.toString());
-            twV[0].setOnClickListener((View view) -> showItemContents((Entities.ExternalFileDescriptor) collectionItem));
+            twV[0].setOnClickListener((View view) -> viewItemContents((Entities.ExternalFileDescriptor) collectionItem));
 
             Button button = itemView.findViewById(R.id.buttonCollectionItemAddRemove);
             if (viewOnly) {
@@ -159,38 +159,20 @@ public class EditCollectionDialogFragment extends DialogFragment
 
     void addItem() {
         if (ef.isAttachments()) {
-            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-            intent.addCategory(Intent.CATEGORY_OPENABLE);
-            intent.setType("image/*");
-// ToDo Нужно еще .pdf,.xls,.doc,.docx,.xlsx https://stackoverflow.com/questions/28978581/how-to-make-intent-settype-for-pdf-xlsx-and-txt-file-android
-            startActivityForResult(intent, PICK_FILE_REQUEST_CODE);
+            String[] mimeTypes =
+                    {"image/*", "application/pdf", "application/msword", "application/vnd.ms-excel"};
+            pickFile(mimeTypes, this, PICK_FILE_REQUEST_CODE);
         } else {
             message("Еще не сделано");
         }
     }
 
-    void showItemContents(Entities.ExternalFileDescriptor efd) {
+    void viewItemContents(Entities.ExternalFileDescriptor efd) {
         if (ef.isAttachments()) {
             String dir = curActivity.getFilesDir().getAbsolutePath();  // Соответствует элементу files-path в provider_paths.xml
-            cr.downloadFile(efd.id, dir, null); //efd.name); Будет грузить под одним и тем же именем - downloaded....
-            if (cr.responseBodyStr != null) {  // full path
-                Intent intent = new Intent(Intent.ACTION_VIEW);
-/* https://inthecheesefactory.com/blog/how-to-share-access-to-file-with-fileprovider-on-android-nougat/en
-                Uri uri=Uri.parse("file:"+cr.responseBodyStr);
-https://developer.android.com/reference/android/support/v4/content/FileProvider
-*/
-                Uri uri = FileProvider.getUriForFile(curActivity,
-                        BuildConfig.APPLICATION_ID + ".provider",
-                        new File(cr.responseBodyStr));
-                if (uri != null) {
-//                    curActivity.grantUriPermission(packageName,uri,Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                    intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);  // Именно это!
-                    intent.setDataAndType(uri,
-                            "image/*"); // Нужно еще .pdf,.xls,.doc,.docx,.xlsx
-                    startActivity(intent);
-                } else {
-                    message("Не могу показать файл\n" + cr.responseBodyStr);
-                }
+            String fullPath = cr.downloadFile(efd.id, dir, null); //efd.name); Будет грузить под одним и тем же именем - downloaded....
+            if (fullPath != null) {
+                viewFile(cr.responseBodyStr);
             } else {
                 message("Ошибка при загрузке файла c сервера\n" + cr.error);
             }
@@ -201,6 +183,7 @@ https://developer.android.com/reference/android/support/v4/content/FileProvider
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent resultData) {
+        requestCode = requestCode;
         if (requestCode == PICK_FILE_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
             if (resultData != null) {
                 Uri uri = resultData.getData();  // Выбрали файл
@@ -208,7 +191,7 @@ https://developer.android.com/reference/android/support/v4/content/FileProvider
 
                 Entities.ExternalFileDescriptor efd = new Entities.ExternalFileDescriptor(uri);
                 if (efd.externalCode != null) { // full path не null - отправляем
-                    String id = cr.uploadFile(efd.externalCode);  // ToDo Пока грузится - черный экран
+                    String id = cr.uploadFile(efd.externalCode, efd.name);  // ToDo Пока грузится - черный экран
                     if (id != null) {
                         efd.id = id;
                         collectionItems.add(collectionItems.size() - 1, efd); // Предпоследний !
@@ -240,7 +223,7 @@ https://developer.android.com/reference/android/support/v4/content/FileProvider
 /*  Since you have a custom adapter, you need to have the onClickListener inside of getView() :(
         listView.setOnItemClickListener( // Не setOnItemSelectedListener !
                 (AdapterView<?> parent, View view, int position, long id) -> {
-                    showItemContents((Entities.ExternalFileDescriptor) parent.getAdapter().getItem(position));
+                    viewItemContents((Entities.ExternalFileDescriptor) parent.getAdapter().getItem(position));
                 });
 */
 

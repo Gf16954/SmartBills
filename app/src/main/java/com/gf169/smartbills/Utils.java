@@ -3,13 +3,21 @@ package com.gf169.smartbills;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.ColorRes;
+import android.support.v4.content.FileProvider;
 import android.support.v4.graphics.drawable.DrawableCompat;
 import android.util.Log;
 import android.view.MenuItem;
 import android.widget.Toast;
 
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -62,12 +70,15 @@ public class Utils {
     }
 
     static String dateStr2DateStr(String dateStr, SimpleDateFormat sdfIn, SimpleDateFormat sdfOut) {
+        return sdfOut.format(dateStr2Date(dateStr, sdfIn));
+/*
         try {
             return sdfOut.format(sdfIn.parse(dateStr));
         } catch (Exception e) {
             message("Неверная дата - " + dateStr);
             return null;
         }
+*/
     }
 
     static String getCallStack(int iStart) {
@@ -110,47 +121,79 @@ public class Utils {
                 message, Toast.LENGTH_LONG).show();
     }
 
-/*
-    public static String getPath(Context context, Uri uri) {
+    public static void pickFile(String[] mimeTypes, Object caller, int requestCode) {
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            return getPathAPI19(context, uri);
+            intent.setType(mimeTypes.length == 1 ? mimeTypes[0] : "*/*");
+            if (mimeTypes.length > 0) {
+                intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
+            }
+        } else {
+            String mimeTypesStr = "";
+            for (String mimeType : mimeTypes) {
+                mimeTypesStr += mimeType + "|";
+            }
+            mimeTypesStr = "*/*|"; // ToDo Иначе не видит картинок :(
+            intent.setType(mimeTypesStr.substring(0, mimeTypesStr.length() - 1));
         }
-
-        String[] fileAttrColumns = {MediaStore.MediaColumns.DATA};
-        Cursor cursor = curActivity.getContentResolver().query(uri, fileAttrColumns,
-                null, null, null);
-        String filePath=null;
-        if (cursor.moveToFirst()) {
-            filePath=cursor.getString(cursor.getColumnIndex(fileAttrColumns[0]));
+        if (caller instanceof android.app.Activity) {
+            ((android.app.Activity) caller).startActivityForResult(Intent.createChooser(intent, "ChooseFile"), requestCode);
+        } else if (caller instanceof android.app.DialogFragment) { // Полное имя!
+            ((android.app.DialogFragment) caller).startActivityForResult(Intent.createChooser(intent, "ChooseFile"), requestCode);
+        } else {
+            message("Error in pickFile");
         }
-        cursor.close();
-
-        return  filePath;
     }
-*/
-/*
-    public static String getPathAPI19(Context context, Uri uri) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
-            return null;
+
+    public static void viewFile(String fullPath) {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        /* https://inthecheesefactory.com/blog/how-to-share-access-to-file-with-fileprovider-on-android-nougat/en
+                        Uri uri=Uri.parse("file:"+cr.responseBodyStr);
+        https://developer.android.com/reference/android/support/v4/content/FileProvider
+        */
+        Uri uri = FileProvider.getUriForFile(curActivity,
+                BuildConfig.APPLICATION_ID + ".provider",
+                new File(fullPath));
+        if (uri != null) {
+            //                    curActivity.grantUriPermission(packageName,uri,Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);  // Именно это!
+            intent.setData(uri);
+//            intent.setDataAndType(uri,  Обходится без type'a
+//                    "image/*"); // Нужно еще .pdf,.xls,.doc,.docx,.xlsx
+            try {
+                curActivity.startActivity(intent);
+            } catch (Exception e) {
+                message("На устройстве не установлено программ просмотра файла этого типа");
+            }
+        } else {
+            message("Не могу показать файл\n" + fullPath);
         }
-
-        curActivity.grantUriPermission(packageName,uri,Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-        String filePath = null;
-        String fileId = DocumentsContract.getDocumentId(uri);
-        // Split at colon, use second item in the array
-        String id = fileId.split(":")[1];
-        String[] column = {MediaStore.Images.Media.DATA};
-        String selector = MediaStore.Images.Media._ID + "=?";
-        Cursor cursor = context.getContentResolver().query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                column, selector, new String[]{id}, null);
-        int columnIndex = cursor.getColumnIndex(column[0]);
-        if (cursor.moveToFirst()) {
-            filePath = cursor.getString(columnIndex);
-        }
-        cursor.close();
-
-        return filePath;
     }
-*/
+
+    public static boolean copyFile(Uri sourceUri, String destFullPath) {
+        File file = new File(destFullPath);
+
+        BufferedInputStream input = null;
+        OutputStream output = null;
+        try {
+            InputStream is = curActivity.getContentResolver().openInputStream(sourceUri);
+            input = new BufferedInputStream(is);
+            output = new FileOutputStream(file);
+
+            byte[] data = new byte[1024];
+            int count;
+            while ((count = input.read(data)) != -1) {
+                output.write(data, 0, count);
+            }
+            output.flush();
+            output.close();
+            input.close();
+        } catch (Exception e) {
+            message(e.toString());
+            return false;
+        }
+        return true;
+    }
 }

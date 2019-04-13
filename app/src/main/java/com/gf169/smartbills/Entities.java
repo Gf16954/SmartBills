@@ -2,7 +2,9 @@ package com.gf169.smartbills;
 
 // Generated here: http://www.jsonschema2pojo.org/
 
+import android.database.Cursor;
 import android.net.Uri;
+import android.provider.OpenableColumns;
 import android.util.Log;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -23,6 +25,7 @@ import static com.gf169.smartbills.Common.curActivity;
 import static com.gf169.smartbills.Common.searchEntities;
 import static com.gf169.smartbills.ESEntityLists.PROBLEM_QUERIES;
 import static com.gf169.smartbills.GetPath.getPath;
+import static com.gf169.smartbills.Utils.copyFile;
 import static com.gf169.smartbills.Utils.message;
 
 //import static com.gf169.smartbills.Utils.getPath;
@@ -222,8 +225,31 @@ class Entities {
 
         ExternalFileDescriptor(Uri uri) {
             externalCode = getPath(curActivity, uri); // full path! Только при создании, с сервера приедет null
-            if (externalCode != null && externalCode.contains("/")) {
+            if (externalCode != null) { // && externalCode.contains("/")) {
                 _instanceName = name = externalCode.substring(externalCode.lastIndexOf("/") + 1);  // file name
+
+            } else { // Вероятно, файл из облака (Google drive, например) - загружаем
+//                 if ("com.google.android.apps.docs.storage".equals(uri.getAuthority())) {
+//                 }
+                String mimeType = curActivity.getContentResolver().getType(uri);
+                String ext = "." + mimeType.substring(mimeType.lastIndexOf("/") + 1);
+                Cursor cursor = null;
+                try {
+                    cursor = curActivity.getContentResolver().query(uri, null, null, null, null);
+                    if (cursor != null && cursor.moveToFirst()) {
+                        int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                        String fileName = cursor.getString(nameIndex);
+
+                        String fullPath = curActivity.getFilesDir().getAbsolutePath() + "/temp" + ext;
+                        if (copyFile(uri, fullPath)) {
+                            externalCode = fullPath;
+                            _instanceName = name = fileName;
+                        }
+                    }
+                } finally {
+                    if (cursor != null)
+                        cursor.close();
+                }
             }
         }
     }
