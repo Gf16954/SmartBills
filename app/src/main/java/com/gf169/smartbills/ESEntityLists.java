@@ -136,6 +136,8 @@ class ESEntityLists {
     static ArrayList<String> getEntityListsList() {
         ArrayList<String> r = new ArrayList<>();
 
+        if (curUser == null) return r;
+
         if (curEmployee == null) {
             curEmployee = curUser.getEmployee();
             if (curEmployee == null || curEmployee.id == null) return r;
@@ -148,11 +150,11 @@ class ESEntityLists {
         }
 
         // ToDo Воспроизвести в деталях showWorkflowSpecificTabs из QueryWorkflowBrowse.java ?
-        Set<Entities.Stage> stageSet = searchEntities(  // Все стадии
+        ArrayList<Entities.Stage> stageList = searchEntities(  // Все стадии
                 "wfstp$Stage", Entities.Stage.class, "stage-edit",  // Очень подробный
-                null, null, null, null);
-        if (!CollectionUtils.isEmpty(stageSet)) {
-            for (Entities.Stage stage : stageSet) {
+                null, null, null, "name");
+        if (!CollectionUtils.isEmpty(stageList)) {
+            for (Entities.Stage stage : stageList) {
                 boolean stageAdded = false;
                 if (!CollectionUtils.isEmpty(curUser.userRoles)) {
                     for (Entities.UserRole ur : curUser.userRoles) {

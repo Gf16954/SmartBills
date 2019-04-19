@@ -49,14 +49,15 @@ import static com.gf169.smartbills.Common.TYPE_INTEGER;
 import static com.gf169.smartbills.Common.VALUE_NO;
 import static com.gf169.smartbills.Common.VALUE_YES;
 import static com.gf169.smartbills.Common.cr;
-import static com.gf169.smartbills.Common.curActivity;
 import static com.gf169.smartbills.Common.formEntityFieldsArray;
+import static com.gf169.smartbills.Common.mainActivity;
 import static com.gf169.smartbills.ESMisc.mainEntityName;
+import static com.gf169.smartbills.Utils.dpyToPx;
 
 public class EditDialogFragment extends DialogFragment
         implements View.OnClickListener, View.OnFocusChangeListener {
-    static final String TAG = "gfEditDialogFragment";
 
+    static final String TAG = "gfEditDialogFragment";
     static final String EDIT_MODE_VIEW = "0";
     static final String EDIT_MODE_EDIT = "1";
     static final String EDIT_MODE_CREATION = "2";
@@ -171,7 +172,7 @@ public class EditDialogFragment extends DialogFragment
             getDialog().getWindow().setLayout(width, height);
         } else {
             getDialog().findViewById(android.R.id.title).getLayoutParams().height =
-                    com.gf169.gfutils.Utils.dpyToPx(20);
+                    dpyToPx(20);
             ((TextView) getDialog().findViewById(android.R.id.title)).
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         }
@@ -189,7 +190,7 @@ public class EditDialogFragment extends DialogFragment
                 return;    // ToDo Встать на ошибочное поле
             }
             if (send()) {
-                curActivity.showList(     // Возвращаемся в главный список
+                mainActivity.showList(     // Возвращаемся в главный список
                         false, ep.objOut.getId(), // Созданную выделяем
 //                        ((MainActivity) getActivity()).dataset.getMarkedItemIdsString());
                         null);
@@ -200,9 +201,15 @@ public class EditDialogFragment extends DialogFragment
             dismiss();
 
         } else {  // Actions
-            curActivity.showActionsPopup(curActivity.dataset.getSelected());
+            mainActivity.showActionsPopup(mainActivity.dataset.getSelected());
             dismiss();
         }
+    }
+
+    @Override
+    public void onPause() {
+        Log.d(TAG, "onPause");
+        super.onPause();
     }
 
     @Override

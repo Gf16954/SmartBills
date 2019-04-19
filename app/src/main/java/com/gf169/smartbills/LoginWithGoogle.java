@@ -19,21 +19,21 @@ import com.google.api.client.json.gson.GsonFactory;
 
 import java.util.Collections;
 
-import static com.gf169.gfutils.Utils.doInBackground;
+import static com.gf169.smartbills.Utils.doInBackground;
 import static com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes.SIGN_IN_CANCELLED;
 
-public class LoginWithGoogle {
+class LoginWithGoogle {
     static final String TAG = "gfLoginWithGoogle";
 
     // Build variant - debug, но в нем signing config - config_release !
     // В developer console создано 2 OAuh Андроид-клиента, но тот, который с debug SHA-1,
     // не дает логинится - ошибка 12500 или 16
     // Чтобы возвращал idToken, client_id должен быть WEB-клиента - он также создан в developer console.
-    static final String CLIENT_ID_WEB = "255131263749-b57kastn2nc6b9f813fe6s3c9plt1dj0.apps.googleusercontent.com";
+    private static final String CLIENT_ID_WEB = "255131263749-b57kastn2nc6b9f813fe6s3c9plt1dj0.apps.googleusercontent.com";
 //    static final String CLIENT_ID_ME_DEBUG      = "255131263749-jsqr9rhjsi5lr98s1lfvt93haom47tup.apps.googleusercontent.com";
 //    static final String CLIENT_ID_ME_RELEASE    = "255131263749-u9487onblc8tkitp2sumjjfeidda7dfv.apps.googleusercontent.com";
 
-    static final int MAX_REQUEST_DURATION = 10; // sec
+    private static final int MAX_REQUEST_DURATION = 10; // sec
 
     static void startLogin(Activity curActivity, int requestCode) {
         // Configure sign-in to request the user's ID, email address, basic profile,

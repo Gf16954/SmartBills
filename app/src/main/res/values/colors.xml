@@ -1,15 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#008577</color>
+    <!--<color name="colorPrimary">#008577</color>-->
+    <color name="colorPrimary">#119988</color>
     <color name="colorPrimaryDark">#00574B</color>
     <color name="colorAccent">#D81B60</color>
     <color name="colorListBack">#FFFFFF</color>
     <color name="colorItem">#FFFFFF</color>
-    <color name="colorItemUrgent">#F0E0C0</color>
-    <color name="colorItemSelected">#AAAAAA</color>
-    <color name="colorItemUrgentSelected">#D0C0A0</color>
-    <color name="colorFilterPanel">#CCCCCC</color>
-    <color name="colorFieldNotEmpty">#FFBBCC</color>
+    <color name="colorItemUrgent">#FFEECC</color>
+    <color name="colorItemSelected">#AACCFF</color>
+    <color name="colorItemUrgentSelected">#CCBBCC</color>
+    <!--<color name="colorFilterPanel">#CCCCCC</color>-->
+    <color name="colorFieldNotEmpty">#FFDDDD</color>
     <color name="colorFieldEditable">#FFFFFF</color>
     <color name="colorFieldNotEditable">#CCCCCC</color>
+    <color name="colorAppliedFilterIcon">#FF00FFFF</color>
 </resources>

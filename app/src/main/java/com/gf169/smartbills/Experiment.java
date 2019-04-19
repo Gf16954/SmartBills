@@ -122,6 +122,23 @@ class Experiment {
         Log.d("qqqqq",fullPath);
         if (true) return true;
 */
+
+//        new DoInBackground().show(curActivity.getFragmentManager(),"qq");
+/*
+        DoInBackground.run(curActivity, ()-> {
+            Log.d(TAG, "gfDoInBackground exec: start");
+            for (int i = 0; i < 100000; i++) {
+                for (int j = 0; j < 10000; j++) {
+                }
+            }
+            Log.d(TAG, "gfDoInBackground exec: stop");
+            message("gfDoInBackground qqqqqqq");
+        },20);
+        message("gfDoInBackground qqqqqqqwwwwwww");
+        Log.d(TAG, "gfDoInBackground exec: stop2");
+        if (true) return true;
+*/
+
         return false;
     }
 }

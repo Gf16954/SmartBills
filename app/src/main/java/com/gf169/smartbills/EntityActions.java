@@ -2,8 +2,8 @@ package com.gf169.smartbills;
 
 import java.util.ArrayList;
 
-import static com.gf169.smartbills.Common.curActivity;
 import static com.gf169.smartbills.Common.curUser;
+import static com.gf169.smartbills.Common.mainActivity;
 
 class EntityActions<T extends Common.GetWorkflow> {
     static final String TAG = "gfEntityActions";
@@ -121,16 +121,16 @@ class EntityActions<T extends Common.GetWorkflow> {
                 break;
 */
             case ACTION_EDIT:
-                curActivity.editEntity(entities[0], !userIsActor);
+                mainActivity.editEntity(entities[0], !userIsActor);
                 break;
             case ACTION_DELETE:
-                curActivity.deleteEntity(entities);
+                mainActivity.deleteEntity(entities);
                 break;
             case ACTION_RUN:
-                curActivity.processEntity(entities);
+                mainActivity.processEntity(entities);
                 break;
             case ACTION_COPY:
-                curActivity.copyEntity(entities[0]);
+                mainActivity.copyEntity(entities[0]);
                 break;
         }
     }

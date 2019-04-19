@@ -2,6 +2,7 @@ package com.gf169.smartbills;
 
 import static com.gf169.smartbills.Common.cr;
 import static com.gf169.smartbills.Common.curUser;
+import static com.gf169.smartbills.Common.mainActivity;
 
 class ESMisc {
     public static String mainEntityName = "bills$Query";
@@ -21,6 +22,8 @@ class ESMisc {
 
         query.id = null;
         query.number = null;
+        query.status = null;
+        query.stepName = null;
     }
 
     public static String[] getMandatoryFields(String stepName) {
@@ -46,7 +49,7 @@ class ESMisc {
         return a;
     }
 
-    public static String processEntity(Object entity, String sOk, String sNotOk) {
+    static String processEntity(Object entity, String sOk, String sNotOk) {
         Entities.Query query = (Entities.Query) entity;
 
         if (((Common.GetWorkflow) query).getStepName() == null) {  // В работу
@@ -59,4 +62,13 @@ class ESMisc {
         }
         return "ошибка: не умеем обрабатывать заявку в этом статусе";
     }
+
+    static int getItemColor(boolean isSelected, Object entity) {
+        Entities.Query query = (Entities.Query) entity;
+
+        return mainActivity.getResources().getColor(isSelected ?
+                (query.urgent ? R.color.colorItemUrgentSelected : R.color.colorItemSelected) :
+                (query.urgent ? R.color.colorItemUrgent : R.color.colorItem));
+    }
+
 }

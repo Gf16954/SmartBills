@@ -1,11 +1,15 @@
 package com.gf169.smartbills;
 
-import android.app.DialogFragment;
+import android.annotation.SuppressLint;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Parcelable;
+import android.preference.PreferenceManager;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.view.menu.MenuBuilder;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.PopupMenu;
 import android.support.v7.widget.RecyclerView;
@@ -27,28 +31,29 @@ import com.google.android.gms.common.util.CollectionUtils;
 import java.util.ArrayList;
 
 import static android.view.Menu.NONE;
-import static com.gf169.gfutils.Utils.grantMeAllDangerousPermissions;
-import static com.gf169.gfutils.Utils.iniUtils;
 import static com.gf169.smartbills.Common.Get;
 import static com.gf169.smartbills.Common.GetWorkflow;
 import static com.gf169.smartbills.Common.cr;
 import static com.gf169.smartbills.Common.curActivity;
 import static com.gf169.smartbills.Common.curUser;
+import static com.gf169.smartbills.Common.mainActivity;
 import static com.gf169.smartbills.Common.mainEntityClass;
 import static com.gf169.smartbills.Common.packageName;
 import static com.gf169.smartbills.ESEntityLists.getEntityListsList;
 import static com.gf169.smartbills.ESEntityLists.getFilterStr;
+import static com.gf169.smartbills.ESMisc.getItemColor;
 import static com.gf169.smartbills.ESMisc.mainEntityName;
 import static com.gf169.smartbills.EntityActions.ACTION_CREATE;
+import static com.gf169.smartbills.Utils.grantMeAllDangerousPermissions;
 import static com.gf169.smartbills.Utils.message;
-import static com.gf169.smartbills.Utils.showBundleContents;
-import static com.gf169.smartbills.Utils.tintMenuIcon;
+import static com.gf169.smartbills.Utils.tintIcon;
 
 public class MainActivity extends AppCompatActivity
         implements AdapterView.OnItemSelectedListener {
     static final String TAG = "gfMainActivity";
 
-    public static final int LOGIN_REQUEST_CODE = 9;
+    public static final int REQUEST_CODE_LOGIN = 9;
+    public static final int REQUEST_CODE_SETTINGS = 8;
 
     RecyclerView itemList;
     LinearLayoutManager layoutManager;
@@ -62,14 +67,15 @@ public class MainActivity extends AppCompatActivity
     Spinner entityListSpinner;
     ArrayAdapter<CharSequence> entityListSpinnerAdapter;
     ArrayList<String> listKindNames = new ArrayList<>();
-    int entityListNumber = 0;
+    int entityListNumber;
     String filterStr;
 
     Bundle sis; // savedInstanceState;
     boolean dontFill; // :)
-    Boolean disableInput = true; // Блокирует пользовательский ввод
+    Boolean disableInput = false; // Блокирует пользовательский ввод
 
     EntityActions entityActions;
+    SharedPreferences prefState;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,9 +83,10 @@ public class MainActivity extends AppCompatActivity
         super.onCreate(savedInstanceState);
 
         curActivity = this;
+        mainActivity = this;
         packageName = this.getPackageName();
 
-        iniUtils(curActivity, BuildConfig.DEBUG, curActivity);
+//        iniUtils(curActivity, BuildConfig.DEBUG, curActivity);
         grantMeAllDangerousPermissions();
 
         String s = null;
@@ -91,8 +98,7 @@ public class MainActivity extends AppCompatActivity
             message("Класс " + s + " не существует!");
             return;
         }
-
-        /*
+/*
         dontFill = true;  // Флаг для onSaveInstanceState - не заполняй, а возьми переданный и сохрани
         if (getResources().getConfiguration().orientation !=
                 Configuration.ORIENTATION_LANDSCAPE) {
@@ -111,17 +117,21 @@ public class MainActivity extends AppCompatActivity
         if (sis != null) {
             listKindNames = sis.getStringArrayList("listKindNames");
         }
-
         entityListSpinnerAdapter = new ArrayAdapter(this,
                 android.R.layout.simple_spinner_item, listKindNames);
         entityListSpinnerAdapter.setDropDownViewResource(
                 android.R.layout.simple_spinner_dropdown_item);
-
         entityListSpinner = findViewById(R.id.listKindSpinner);
         entityListSpinner.setAdapter(entityListSpinnerAdapter);
         entityListSpinner.setOnItemSelectedListener(this);
+        prefState = getSharedPreferences("prefState", Context.MODE_PRIVATE);
+        entityListNumber = prefState.getInt("entityListNumber", 0);
+        if (sis != null) {
+            entityListNumber = sis.getInt("entityListNumber", entityListNumber);
+        }
+        entityListSpinner.setSelection(entityListNumber);
 
-        actionsPopup = new PopupMenu(this, toolbar);
+        actionsPopup = new PopupMenu(this, entityListSpinner);
         actionsPopup.getMenuInflater()
                 .inflate(R.menu.menu_actions, actionsPopup.getMenu());  // Пока в нем только заголовок
         actionsPopup.setOnMenuItemClickListener(item -> {
@@ -136,21 +146,22 @@ public class MainActivity extends AppCompatActivity
             }
         });
 */
-
         fab = findViewById(R.id.fab);
         fab.setOnClickListener((View view) -> showActionsPopup(-1));
         fab.hide();
 
-        entityListNumber = 0; // Todo - из настройки
-        if (sis != null) {
-            entityListNumber = sis.getInt("entityListNumber", entityListNumber);
-        }
+        if (PreferenceManager.getDefaultSharedPreferences(this).
+                getAll().toString().equals("{}")) { // Самый первый раз - пусто
+            Intent intent = new Intent(this, SettingsActivity.class);
+            startActivityForResult(intent, REQUEST_CODE_SETTINGS);
 
-        if (sis != null &&
-                (cr = new CubaRequester(sis)) != null && cr.isReady()) {
-            showList(false, null, null);   // Наконец!
         } else {
-            login();
+            if (sis != null &&
+                    (cr = new CubaRequester(sis)) != null && cr.isReady()) {
+                showList(false, null, null);   // Наконец!
+            } else {
+                login();
+            }
         }
     }
 
@@ -184,7 +195,6 @@ public class MainActivity extends AppCompatActivity
             if (listKindNames != null) {
                 savedInstanceState.putStringArrayList("listKindNames", listKindNames);
             }
-            showBundleContents(TAG, savedInstanceState);
         }
     }
 
@@ -195,18 +205,37 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
+    @SuppressLint("RestrictedApi")
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_main, menu);
+
+        if (menu instanceof MenuBuilder) {
+            ((MenuBuilder) menu).setOptionalIconsVisible(true);
+        }
+
+        enableActions(menu, false);
         return true;
     }
 
+    @SuppressLint("")
+
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
+        enableActions(menu, cr != null);
+
         if (curUser != null) {
             entityActions = new EntityActions(null, entityListNumber);
             menu.findItem(R.id.action_new).setVisible(entityActions.actionIsPossible(ACTION_CREATE));
         }
+
         paintSearchIcon(menu.findItem(R.id.action_search));
+
+        for (int i = 0; i < menu.size(); i++) {
+            if (menu.getItem(i).getItemId() == R.id.action_login) {
+                menu.getItem(i).setTitle(curUser == null ? "Логин" : curUser.getInstanceName());
+                break;
+            }
+        }
 
         return super.onPrepareOptionsMenu(menu);
     }
@@ -219,8 +248,7 @@ public class MainActivity extends AppCompatActivity
                 return true;
 
             case R.id.action_search:
-                DialogFragment dlg = new FilterDialogFragment();
-                dlg.show(getFragmentManager(), "FilterDialogFragment");
+                new FilterDialogFragment().show(getFragmentManager(), "FilterDialogFragment");
 //                AppCompatDialogFragment dlg = new FilterDialogFragment();
 //                dlg.show(getSupportFragmentManager(), "dlg");
                 return true;
@@ -232,12 +260,18 @@ public class MainActivity extends AppCompatActivity
                         null);
                 return true;
 
+            case R.id.action_login:
+                login();
+                return true;
+
             case R.id.action_settings:
-                Utils.message("Еще не сделано");
+                Intent intent = new Intent(this, SettingsActivity.class);
+                startActivityForResult(intent, REQUEST_CODE_SETTINGS);
                 return true;
 
             case R.id.action_help:
-                Utils.message("Еще не сделано");
+                intent = new Intent(this, HelpActivity.class);
+                startActivity(intent);
                 return true;
 
             default:
@@ -246,9 +280,15 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void onDestroy() {
-        super.onDestroy();
-        curActivity = null;     // Против утечки
+    public void onPause() {
+        Log.d(TAG, "onPause");
+        super.onPause();
+    }
+
+    @Override
+    public void onResume() {
+        Log.d(TAG, "onResume");
+        super.onResume();
     }
 
     @Override
@@ -256,7 +296,9 @@ public class MainActivity extends AppCompatActivity
                                int pos, long id) {
         if (pos != entityListNumber) {
             entityListNumber = pos;
-            FilterDialogFragment.toApplyFilter = false; // ToDo ?
+            prefState.edit().putInt("entityListNumber", entityListNumber).apply();
+
+            FilterDialogFragment.toApplyFilter = false; // ToDo Сбрасываем - правильно?
             showList(false, null, null);
         }
     }
@@ -323,34 +365,47 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+    void enableActions(Menu menu, boolean enabled) {
+        for (int i = 0; i < menu.size(); i++) {
+            int j = menu.getItem(i).getItemId();
+            if (j == R.id.action_new || j == R.id.action_search || j == R.id.action_refresh) {
+                menu.getItem(i).setEnabled(enabled);
+            }
+        }
+    }
+
     public void login() {
         Log.d(TAG, "login");
 
         Intent intent = new Intent(this, LoginActivity.class);
-        startActivityForResult(intent, LOGIN_REQUEST_CODE);
+        startActivityForResult(intent, REQUEST_CODE_LOGIN);
     }
 
     protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
-        if (requestCode == LOGIN_REQUEST_CODE) {
-            if (cr == null || !cr.isReady()) {  // В экране логина нажажи Назад
-                finish();
-                return;
-            }
-            if (new Experiment().exec()) return;
+        if (requestCode == REQUEST_CODE_LOGIN) {
+            if (cr != null && cr.isReady()) {
 
-            if ((curUser = Entities.ExtUser.build(null)) == null) {
-                Utils.message("Не удалось получить параметры текущего пользователя");
+                if (new Experiment().exec()) return;
+
+                curUser = Entities.ExtUser.build(null);
+                if (curUser != null) {
+                    dontFill = false;  // Уже токен получен, его надо будет сохранить
+                    if (!CollectionUtils.isEmpty(listKindNames))
+                        listKindNames.clear();  // Пользователь сменился (возможно)
+                } else {
+                    cr = null;
+                    Utils.message("Не удалось получить параметры текущего пользователя");
+                }
+            } else {  // Юзер не смог залогиниться и нажал Back
                 cr = null;
+                curUser = null;
             }
-            if (cr != null) {
-                dontFill = false;  // Уже токен получен, его надо будет сохранить
-                if (!CollectionUtils.isEmpty(listKindNames))
-                    listKindNames.clear();  // Пользователь сменился (возможно)
 
+            invalidateOptionsMenu();
+            showList(false, null, null);
 
-                showList(false, null, null);
-
-            }
+        } else if (requestCode == REQUEST_CODE_SETTINGS) {
+            login();
         }
     }
 
@@ -358,6 +413,13 @@ public class MainActivity extends AppCompatActivity
         Log.d(TAG, "showList " + dontReload);
 
         invalidateOptionsMenu();
+
+        if (cr == null) {
+            if (itemList != null) {
+                itemList.setAdapter(null);
+            }
+            return;
+        }
 
         disableInput = true;  // Пока не покажем
 
@@ -367,7 +429,6 @@ public class MainActivity extends AppCompatActivity
         }
 
         filterStr = getFilterStr(listKindNames.get(entityListNumber));
-        // if (filterStr == null) return;
 
         dataset = new ESDataset("tag");
         int chunkSize = 50;   // ToDo
@@ -382,6 +443,7 @@ public class MainActivity extends AppCompatActivity
                 selectedItemId);
         markedItemsIds = (sis != null ? sis.getString("markedItems", markedItemsIds) :
                 markedItemsIds);
+
         // Синхронно грузим первую страницу ToDo сохранять?
         dataset.addPage(lastVisibleItemPosition, selectedItemId, markedItemsIds, itemList, dontReload);
 
@@ -391,31 +453,7 @@ public class MainActivity extends AppCompatActivity
         itemList.setHasFixedSize(true);
         itemList.setAdapter(adapter);
 
-        layoutManager = new LinearLayoutManager(this) {
-/*
-            @Override
-            public void onLayoutCompleted (RecyclerView.State state) {
-                super.onLayoutCompleted(state);
-                int iF = layoutManager.findFirstVisibleItemPosition();
-                int iL = layoutManager.findLastVisibleItemPosition();
-                Log.d(TAG, "onLayoutCompleted: "+iF+" "+iL);
-                int pos = dataset.getSelected();
-                if (pos >= 0) {
-                    if (pos < iF || pos > iL) {  // Если выделенный не виден, его в первую строку
-                        layoutManager.scrollToPositionWithOffset(pos, 0);
-                        // itemList.smoothScrollToPosition(pos); Или так
-                    }
-                } else {    // Выделенного нет - первый из отмеченных
-                    pos = dataset.getFirstMarkedItemPos();
-                    if (pos >= 0) {
-                        if (pos < iF || pos > iL) {
-                            layoutManager.scrollToPositionWithOffset(pos, 0);
-                        }
-                    }
-                }
-            }
-*/
-        };
+        layoutManager = new LinearLayoutManager(this);
         itemList.setLayoutManager(layoutManager);
         if (sis != null) {  // Восстанавливаем позицию после переворота (и так восстановится)
             // и после восстановления после убийства (!!!)
@@ -511,12 +549,8 @@ public class MainActivity extends AppCompatActivity
             paintItem(v, isSelected, entity);
         }
 
-        protected void paintItem(View v, boolean isSelected, Object o) {
-            int color = getResources().getColor(isSelected ?
-                    R.color.colorItemSelected :
-                    R.color.colorItem
-            );
-            v.setBackgroundColor(color);
+        protected void paintItem(View v, boolean isSelected, Object entity) {
+            v.setBackgroundColor(getItemColor(isSelected, entity));
         }
     }
 
@@ -568,7 +602,7 @@ public class MainActivity extends AppCompatActivity
                 entity == null ? EditDialogFragment.EDIT_MODE_CREATION :
                         !viewMode ? EditDialogFragment.EDIT_MODE_EDIT :
                                 EditDialogFragment.EDIT_MODE_VIEW;
-        Get eIn = null;
+        Get eIn;
         if (entity == null) { // Создание
             try {
                 eIn = (Get) mainEntityClass.newInstance();
@@ -582,7 +616,7 @@ public class MainActivity extends AppCompatActivity
             eIn = (Get) entity;
         }
 
-        Get eOut = null;
+        Get eOut;
         try {
             eOut = (Get) mainEntityClass.newInstance();
         } catch (Exception e) {
@@ -600,8 +634,7 @@ public class MainActivity extends AppCompatActivity
                     layoutManager.onSaveInstanceState());
         }
         EditDialogFragment.isFragmentNewIstance = true;  // true - запуск фрагмента из программы, а не автоматическое пересоздание при перевороте
-        EditDialogFragment dlg = new EditDialogFragment();
-        dlg.show(getFragmentManager(), "EditDialogFragment");
+        new EditDialogFragment().show(getFragmentManager(), "EditDialogFragment");
     }
 
     void processEntity(Object[] entities) {
@@ -656,12 +689,10 @@ public class MainActivity extends AppCompatActivity
     }
 
     void paintSearchIcon(MenuItem menuItem) {
-        int color = FilterDialogFragment.toApplyFilter ?
-                android.R.color.holo_blue_bright :
-                android.R.color.darker_gray;
-        tintMenuIcon(this, menuItem, color);
+        tintIcon(menuItem,
+                FilterDialogFragment.toApplyFilter ?
+                        getResources().getColor(R.color.colorAppliedFilterIcon) : null);
     }
-
 }
 
 // Todo
@@ -669,20 +700,19 @@ public class MainActivity extends AppCompatActivity
 // 2. Сортировка?
 // 3. Номер текущей записи показать?
 // -4. Фильтр по срочности?
-// 5. adapter.notifyDataSetChanged() после загрузки каждого chunk'a, а не всей страницы ?
+// -5. adapter.notifyDataSetChanged() после загрузки каждого chunk'a, а не всей страницы ?
 // 6. Сохранять items в parcel?
-// 7. Progress spinner везде, где нужно (при загрузке первого chunk'a)
+// +7. Progress spinner везде, где нужно (при загрузке первого chunk'a)
 // +8. Стоя не влезает
 // +9. Class utils
 // 10. Показывать число загруженных записей ?
 // +11. В первых 2 списках показывать статус заявки
 // 12. FAB перерисовать с числом выбранных
 // +13. Дабавить refresh
-// 14. Вложения
+// +14. Вложения
 // 15. Оптимизировать delete (добавить поле)?
-// 16. После создания сразу в работу
+// 16. После создания сразу в работу?
 // 17. Предупреждение перед удалением
-// 18. Переделать фильтр - неудобный
 
 /*  TODO: 02.04.2019
 1. Прикрепление вложений 11.4 Сделано частично: только локальные, только картинки, только активный выбор
@@ -693,10 +723,10 @@ public class MainActivity extends AppCompatActivity
 2. Проталкивание заявки дальше из состояния Финансовый контроль
 3. Наведение красоты:
     3.1. Подбор иконкок, на рабочий стол и в action bar
-    3.2. Подбор цветов
+    +3.2. Подбор цветов
     3.3. Точный учет размеров экрана, в т.ч. планшет/ландшафт (показ
     текущей заявки рядом со списком, как в gmail)
-    3.4. Индикатор ожидания (песочные часы) везде где нужно: при логине,
+    +3.4. Индикатор ожидания (песочные часы) везде где нужно: при логине,
     при загрузке первой порции заявок, ...
     3.5. На FAB (красной кнопке) писать число отмеченных заявок - трудно:(
     3.6. Анимацию куда-нибудь
@@ -707,9 +737,9 @@ public class MainActivity extends AppCompatActivity
 6. Сортировка? Непонятно как делать
 7. Автоматическое обновление access token'a
 8. Решение проблемы несостоятельности страничной загрузки
-9. Перелогин
-10. Настойка? Непонятно, что туда пихать
-11. Хелп? Нужен? Или и так все ясно?
++9. Перелогин
++10. Настойка? Непонятно, что туда пихать
++11. Хелп? Нужен? Или и так все ясно?
 12. Слова в ресурсы? Может ли понадобиться не русский интерфейс?
 13. Регистрация нового пользователя?
 14. Победить: при клике на заявке при уже выбранной другой чтобы сразу вылезало меню

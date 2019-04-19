@@ -1,7 +1,10 @@
 package com.gf169.smartbills;
 
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Looper;
+import android.preference.PreferenceManager;
 import android.util.Log;
 
 import org.json.JSONException;
@@ -21,7 +24,8 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-import static com.gf169.gfutils.Utils.doInBackground;
+import static com.gf169.smartbills.Common.mainActivity;
+import static com.gf169.smartbills.Utils.doInBackground;
 
 public class CubaRequester {
     static final String TAG = "gfCubaRequester";
@@ -31,13 +35,12 @@ public class CubaRequester {
     static final int TOKEN_KIND_GOOGLE_ID_TOKEN = 3;  // https://developers.google.com/identity/sign-in/web/backend-auth
     static final int TOKEN_KIND_GOOGLE_CODE_AUTH = 4; // https://developers.google.com/identity/sign-in/android/offline-access
 
-    private String SERVER_URL = "http://billstest.groupstp.ru:9090/app/rest/v2/";  // Без final - для подмены
-    private final String SERVER_URL_ALT = "http://billstest.groupstp.ru:9090/app/rest/api/";
-    private final String REST_API_AUTHORIZATION = "Basic Y2xpZW50OnNlY3JldA==";
-    private final String TOKENS_URL = "http://billstest.groupstp.ru:9090/app/rest/google/login";
+    private String serverUrl;
+    private String serverUrlAlt;
+    private final String restApiAuthorization = "Basic Y2xpZW50OnNlY3JldA==";
+    private String tokensUrl;
+    private int maxRequestDuration; // sec
     public final String DOWNLOADED_FILE_NAME = "downloaded";
-
-    private static final int MAX_REQUEST_DURATION = 60; // sec  // TODO: 30.03.2019 в настройку
 
     String accessToken;
 
@@ -51,26 +54,44 @@ public class CubaRequester {
 
     private Runnable onResponseCallback;
 
+    private CubaRequester() {
+        SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(mainActivity); // можно менять на ходу
+
+        String cubaHost = settings.getString("cuba_host", "НЕ_ЗАДАН_CUBA_HOST");
+        String cubaPort = settings.getString("cuba_port", "НЕ_ЗАДАН_CUBA_PORT");
+        String cubaBaseUrl = settings.getString("cuba_base_url", "НЕ_ЗАДАН_CUBA_BASE_URL");
+        String cubaBaseUrl2 = settings.getString("cuba_base_url_2", "НЕ_ЗАДАН_CUBA_BASE_URL_2");
+        tokensUrl = settings.getString("cuba_tokens_url", "НЕ_ЗАДАН_CUBA_TOKENS_URL");
+
+        serverUrl = "http://" + cubaHost + ":" + cubaPort + "/" + cubaBaseUrl + "/"; // http://billstest.groupstp.ru:9090/app/rest/v2/
+        serverUrlAlt = "http://" + cubaHost + ":" + cubaPort + "/" + cubaBaseUrl2 + "/"; // http://billstest.groupstp.ru:9090/app/rest/api/
+        tokensUrl = "http://" + cubaHost + ":" + cubaPort + "/" + tokensUrl; // http://billstest.groupstp.ru:9090/app/rest/google/login
+        maxRequestDuration = settings.getInt("max_request_duration", 60) * 1000;
+    }
+
     public CubaRequester(String userLogin, String userPassword) {
+        this();
+
         client = new OkHttpClient.Builder()
-                .connectTimeout(MAX_REQUEST_DURATION + 1, TimeUnit.SECONDS)
-                .writeTimeout(MAX_REQUEST_DURATION + 1, TimeUnit.SECONDS)
-                .readTimeout(MAX_REQUEST_DURATION + 1, TimeUnit.SECONDS)
+                .connectTimeout(maxRequestDuration + 1, TimeUnit.SECONDS)
+                .writeTimeout(maxRequestDuration + 1, TimeUnit.SECONDS)
+                .readTimeout(maxRequestDuration + 1, TimeUnit.SECONDS)
                 .build();
         getAccessToken(userLogin, userPassword);
     }
 
     public CubaRequester(String token, int tokenKind) {
+        this();
+
         client = new OkHttpClient.Builder()
                 .build();
-//        client.connectionSpecs().get() connectTimeoutMillis();
         if (tokenKind == TOKEN_KIND_CUBA_ACCESS_TOKEN) {
             this.accessToken = token;
-//        } else if (tokenKind==TOKEN_KIND_GOOGLE_ACCESS_TOKEN) {
+        } else if (tokenKind == TOKEN_KIND_GOOGLE_ACCESS_TOKEN) {
 //            getAccessToken2(token);
         } else if (tokenKind == TOKEN_KIND_GOOGLE_ID_TOKEN) {
             getAccessToken3(token);
-//        } else if (tokenKind==TOKEN_KIND_GOOGLE_CODE_AUTH) {
+        } else if (tokenKind == TOKEN_KIND_GOOGLE_CODE_AUTH) {
 //            getAccessToken4(token);
         }
     }
@@ -94,12 +115,13 @@ public class CubaRequester {
         error = null;
 
         if (onResponseCallback == null) { // Синхронно
-            if (doInBackground(this::execRequest2, MAX_REQUEST_DURATION)) {
-                if (error == null) {
-                    preProcessResponse();
-                }
-            } else {
-                error = "Не дождались конца выполнения запроса (ждали " + MAX_REQUEST_DURATION + " секунд)";
+            if (Thread.currentThread() != Looper.getMainLooper().getThread()) { // Уже НЕ в UI thread
+                execRequest2();
+            } else if (!doInBackground(this::execRequest2, maxRequestDuration)) {
+                error = "Не дождались конца выполнения запроса (ждали " + maxRequestDuration + " секунд)";
+            }
+            if (error == null) {
+                preProcessResponse();
             }
         } else {  // Асинхронно - не тестировалось, не используется
             new AsyncTask<Integer, Void, Integer>() {
@@ -107,7 +129,6 @@ public class CubaRequester {
                     execRequest2();
                     return 0;
                 }
-
                 protected void onPostExecute(Long result) {
                     preProcessResponse();
                     onResponseCallback.run();
@@ -199,13 +220,20 @@ public class CubaRequester {
     private boolean getAccessToken(String userLogin, String userPassword) {
         Log.d(TAG, "getAccessToken " + userLogin + " " + userPassword);
 
-        request = new Request.Builder()
-                .url(SERVER_URL + "oauth/token")
-                .header("Authorization", REST_API_AUTHORIZATION)
-                .post(RequestBody.create(
-                        MediaType.parse("application/x-www-form-urlencoded; charset=utf-8"),
-                        "grant_type=password&username=" + userLogin + "&password=" + userPassword))
-                .build();
+        try {
+            request = new Request.Builder()
+                    .url(serverUrl + "oauth/token")
+                    .header("Authorization", restApiAuthorization)
+                    .post(RequestBody.create(
+                            MediaType.parse("application/x-www-form-urlencoded; charset=utf-8"),
+                            "grant_type=password&username=" + userLogin + "&password=" + userPassword))
+                    .build();
+        } catch (Exception e) {
+            error = e.getMessage() + "\n" + e.toString();
+            Log.d(TAG, "getAccessToken " + error);
+            e.printStackTrace();
+            return false;
+        }
         if (execRequest()) {
             try {
                 accessToken = responseBody.getString("access_token");
@@ -226,7 +254,7 @@ public class CubaRequester {
         Log.d(TAG, "getAccessToken3");
 
         request = new Request.Builder()
-                .url(TOKENS_URL)
+                .url(tokensUrl)
                 .post(RequestBody.create(
                         MediaType.parse("application/json; charset=utf-8"),
                         "{\"id_token\":\"" + googleIdToken + "\"}"))
@@ -252,7 +280,7 @@ public class CubaRequester {
         Log.d(TAG, "getSomething " + URLtail);
 
         request = new Request.Builder()
-                .url(SERVER_URL + URLtail)
+                .url(serverUrl + URLtail)
                 .header("Authorization", "Bearer " + accessToken)
                 .get()
                 .build();
@@ -290,7 +318,7 @@ public class CubaRequester {
         Log.d(TAG, "postJSON " + URLTail + "\n" + bodyStr);
 
         request = new Request.Builder()
-                .url(SERVER_URL + URLTail)
+                .url(serverUrl + URLTail)
                 .header("Authorization", "Bearer " + accessToken)
                 .post(RequestBody.create(MediaType.parse("application/json"), bodyStr))
                 .build();
@@ -298,10 +326,10 @@ public class CubaRequester {
     }
 
     boolean postJSON(String URLTail, String bodyStr, boolean useAltServer) {
-        String serverURL = SERVER_URL;
-        SERVER_URL = SERVER_URL_ALT;
+        String serverURL = serverUrl;
+        serverUrl = serverUrlAlt;
         boolean r = postJSON(URLTail, bodyStr);
-        SERVER_URL = serverURL;
+        serverUrl = serverURL;
         return r;
     }
 
@@ -329,7 +357,7 @@ public class CubaRequester {
         Log.d(TAG, "updateEntitity " + entityName + " entityId " + entityId);
 
         request = new Request.Builder()
-                .url(SERVER_URL + "entities" + (entityName == null ? "" : "/" + entityName)
+                .url(serverUrl + "entities" + (entityName == null ? "" : "/" + entityName)
                         + (entityId == null ? "" : "/" + entityId)
                 )
                 .header("Authorization", "Bearer " + accessToken)
@@ -342,7 +370,7 @@ public class CubaRequester {
         Log.d(TAG, "deleteEntitity " + entityName + " entityId " + entityId);
 
         request = new Request.Builder()
-                .url(SERVER_URL + "entities" + (entityName == null ? "" : "/" + entityName)
+                .url(serverUrl + "entities" + (entityName == null ? "" : "/" + entityName)
                         + (entityId == null ? "" : "/" + entityId)
                 )
                 .header("Authorization", "Bearer " + accessToken)
@@ -360,7 +388,7 @@ public class CubaRequester {
             return null;
         }
         request = new Request.Builder()
-                .url(SERVER_URL + "files?name=" + URLEncoder.encode(
+                .url(serverUrl + "files?name=" + URLEncoder.encode(
                         displayName != null ? displayName :
                                 fullPath.substring(fullPath.lastIndexOf("/") + 1)))
                 .header("Authorization", "Bearer " + accessToken)
@@ -417,4 +445,5 @@ public class CubaRequester {
 2. Не умеет фильтровать по значению null
 3. Отказывается сортировать по _entityName и _instanceName - 500 без объяснений
 4. Get entity list: не x=select 1 раз и (select from x) n раз, а (select from select) n раз
+5. Невозможно убить загруженный файл
 */

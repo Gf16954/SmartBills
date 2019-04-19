@@ -168,40 +168,86 @@ public class EditCollectionDialogFragment extends DialogFragment
     }
 
     void viewItemContents(Entities.ExternalFileDescriptor efd) {
-        if (ef.isAttachments()) {
-            String dir = curActivity.getFilesDir().getAbsolutePath();  // Соответствует элементу files-path в provider_paths.xml
-            String fullPath = cr.downloadFile(efd.id, dir, null); //efd.name); Будет грузить под одним и тем же именем - downloaded....
-            if (fullPath != null) {
-                viewFile(cr.responseBodyStr);
+        DoInBackground.run(curActivity, () -> {
+            if (ef.isAttachments()) {
+                String dir = curActivity.getFilesDir().getAbsolutePath();  // Соответствует элементу files-path в provider_paths.xml
+                String fullPath = cr.downloadFile(efd.id, dir, null); //efd.name); Будет грузить под одним и тем же именем - downloaded....
+                if (fullPath != null) {
+                    viewFile(cr.responseBodyStr);
+                } else {
+                    message("Ошибка при загрузке файла c сервера\n" + cr.error);
+                }
             } else {
-                message("Ошибка при загрузке файла c сервера\n" + cr.error);
+                message("Еще не сделано");
             }
-        } else {
-            message("Еще не сделано");
-        }
+        });
     }
 
     @Override
+    public void onPause() {
+        Log.d(TAG, "onPause");
+        super.onPause();
+    }
+
+    @Override
+    public void onResume() {
+        Log.d(TAG, "onResume");
+        super.onResume();
+/*
+        view.getViewTreeObserver().addOnPreDrawListener(myListener);
+        ((ViewGroup) getActivity().findViewById(android.R.id.content)).getChildAt(0).
+            post(()->{
+                for (int i = 0; i < 100000; i++) {
+                    for (int j = 0; j < 10000; j++) {}
+                }
+            });
+*/
+/*
+        if (resultDataX!=null) {
+//            onActivityResult2(requestCodeX, resultCodeX, resultDataX);
+            ((ViewGroup) getActivity()
+                    .findViewById(android.R.id.content)).getChildAt(0).
+            post(()->onActivityResult2(requestCodeX, resultCodeX, resultDataX));
+        }
+*/
+    }
+/*
+    @Override
     public void onActivityResult(int requestCode, int resultCode, Intent resultData) {
-        requestCode = requestCode;
+        Log.d(TAG,"onActivityResult");
+//        getView().post(()->onActivityResult2(requestCode, resultCode, resultData));
+        requestCodeX=requestCode;
+        resultCodeX=resultCode;
+        resultDataX=resultData;
+    }
+*/
+
+    public void onActivityResult(int requestCode, int resultCode, Intent resultData) {
+        Log.d(TAG, "onActivityResult");
+
         if (requestCode == PICK_FILE_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
             if (resultData != null) {
                 Uri uri = resultData.getData();  // Выбрали файл
                 Log.i(TAG, "Uri: " + uri.toString());
 
-                Entities.ExternalFileDescriptor efd = new Entities.ExternalFileDescriptor(uri);
-                if (efd.externalCode != null) { // full path не null - отправляем
-                    String id = cr.uploadFile(efd.externalCode, efd.name);  // ToDo Пока грузится - черный экран
-                    if (id != null) {
-                        efd.id = id;
-                        collectionItems.add(collectionItems.size() - 1, efd); // Предпоследний !
-                        ((ArrayAdapter<Object>) listView.getAdapter()).notifyDataSetChanged();
+                DoInBackground.run(curActivity, () -> {
+                    Entities.ExternalFileDescriptor efd = new Entities.ExternalFileDescriptor(uri);
+                    if (efd.externalCode != null) { // full path не null - отправляем
+                        String id = cr.uploadFile(efd.externalCode, efd.name);  // ToDo Пока грузится - черный экран
+                        if (id != null) {
+                            efd.id = id;
+                            collectionItems.add(collectionItems.size() - 1, efd); // Предпоследний !
+                            curActivity.runOnUiThread(() ->
+                            {
+                                ((ArrayAdapter<Object>) listView.getAdapter()).notifyDataSetChanged();
+                            });
+                        } else {
+                            message("Ошибка при загрузке файла на сервер\n" + cr.error);
+                        }
                     } else {
-                        message("Ошибка при загрузке файла на сервер\n" + cr.error);
+                        message("Не могу добавить файл\n" + uri.toString());
                     }
-                } else {
-                    message("Не могу добавить файл\n" + uri.toString());
-                }
+                });
             }
         }
     }

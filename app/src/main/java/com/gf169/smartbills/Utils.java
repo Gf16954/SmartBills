@@ -1,14 +1,20 @@
 package com.gf169.smartbills;
 
-import android.content.Context;
+import android.app.Fragment;
+import android.app.FragmentTransaction;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.PermissionInfo;
+import android.content.res.Resources;
+import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.annotation.ColorRes;
+import android.os.SystemClock;
 import android.support.v4.content.FileProvider;
-import android.support.v4.graphics.drawable.DrawableCompat;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.MenuItem;
 import android.widget.Toast;
@@ -20,19 +26,25 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.LinkedList;
+import java.util.List;
 
 import static com.gf169.smartbills.Common.curActivity;
 import static com.gf169.smartbills.Common.packageName;
 
 public class Utils {
+    static DisplayMetrics metrics = Resources.getSystem().getDisplayMetrics();
+
     public static String error;
 
-    static void tintMenuIcon(Context context, MenuItem item, @ColorRes int color) {
-        Drawable normalDrawable = item.getIcon();
-        Drawable wrapDrawable = DrawableCompat.wrap(normalDrawable);
-        DrawableCompat.setTint(wrapDrawable, context.getResources().getColor(color));
-
-        item.setIcon(wrapDrawable);
+    static void tintIcon(MenuItem menuItem, Integer color) {
+        // setTint не работает! То есть работает, но обратно вернуться невозможно, только другой tint установить
+        Drawable drawable = menuItem.getIcon();
+        if (color != null) { // color должен быть с Alfa FF
+            drawable.setColorFilter(color, PorterDuff.Mode.SRC_ATOP);
+        } else {
+            drawable.setColorFilter(null);
+        }
     }
 
     static void showExtras(String TAG, Intent intent) {
@@ -112,13 +124,11 @@ public class Utils {
 
     public static void message(String message) {
         logD2(message);
-/*
-    Snackbar.make(findViewById(R.id.fab)
-            , message, Snackbar.LENGTH_LONG)
-            .setAction("Action", null).show();
-*/
-        Toast.makeText(curActivity,   // В отличие от snackbar'a показывает любое число строк, а не 2
-                message, Toast.LENGTH_LONG).show();
+
+        curActivity.runOnUiThread(() -> {
+            Toast.makeText(curActivity,   // В отличие от snackbar'a показывает любое число строк, а не 2
+                    message, Toast.LENGTH_LONG).show();
+        });
     }
 
     public static void pickFile(String[] mimeTypes, Object caller, int requestCode) {
@@ -173,10 +183,11 @@ public class Utils {
     }
 
     public static boolean copyFile(Uri sourceUri, String destFullPath) {
+        // uri должно быть Content Provider'a, но может указывать на внешний ресурс, например, Google drive
         File file = new File(destFullPath);
 
-        BufferedInputStream input = null;
-        OutputStream output = null;
+        BufferedInputStream input;
+        OutputStream output;
         try {
             InputStream is = curActivity.getContentResolver().openInputStream(sourceUri);
             input = new BufferedInputStream(is);
@@ -196,4 +207,101 @@ public class Utils {
         }
         return true;
     }
+
+    public static boolean doInBackground(Runnable runnable, int secondsMax) {
+        // If Java does not allow to do something in foreground, doing it in
+        // bacground.
+        // UI blocks for no more than secondsMax - waits. If дожидается,
+        // function returns true, else returns false and forgets about job that
+        // continues running in background
+        // ToDo: add indicator
+        Thread threadUI = Thread.currentThread();
+        new Thread(() -> {
+            runnable.run();
+            threadUI.interrupt();
+        }).start();
+        if (threadUI.isInterrupted()) return true; // Успел
+        return sleep(secondsMax * 1000, true);
+    }
+
+    public static boolean sleep(int milliseconds, boolean interruptable) {
+        long endTime = SystemClock.elapsedRealtime() + milliseconds;
+        while (endTime > SystemClock.elapsedRealtime()) {
+            try {
+                Thread.sleep(1000);
+            } catch (Exception e) {
+                if (interruptable) {
+                    return true; // interrupted
+                }
+            }
+        }
+        return false;  // Проспал сколько было сказано
+    }
+
+    // Permissions
+    public static class RequestPermissionsFragment extends Fragment {
+        @Override
+        public void onStart() {
+            super.onStart();
+            if (Build.VERSION.SDK_INT < 23) return;
+            requestPermissions(neededPermissions.toArray(new String[0]), 12345);
+        }
+
+        @Override
+        public void onRequestPermissionsResult(
+                int requestCode, String[] permissions, int[] grantResults) {
+            if (requestCode != 12345) return;
+            FragmentTransaction fragmentTransaction =
+                    curActivity.getFragmentManager().beginTransaction();
+            fragmentTransaction.remove(this);
+            fragmentTransaction.commit();
+
+            if (getNotGrantedPermissions() > 0) { // Не дал
+                Toast.makeText(curActivity, "Goodbye",
+                        Toast.LENGTH_LONG).show();
+                curActivity.finish();
+            }
+        }
+    }
+
+    public static void grantMeAllDangerousPermissions() {
+        if (Build.VERSION.SDK_INT < 23) return;
+
+        if (getNotGrantedPermissions() > 0) {
+            FragmentTransaction fragmentTransaction =
+                    curActivity.getFragmentManager().beginTransaction();
+            RequestPermissionsFragment requestFragment = new RequestPermissionsFragment();
+            fragmentTransaction.add(0, requestFragment);
+            fragmentTransaction.commit();
+        }
+    }
+
+    public static final List<String> neededPermissions = new LinkedList<>();
+
+    public static int getNotGrantedPermissions() throws RuntimeException {  // Не даденные опасные permissions в neededPermissions
+        try {
+            // Scan manifest for dangerous permissions not already granted
+            PackageManager packageManager = curActivity.getPackageManager();
+            PackageInfo packageInfo = packageManager.getPackageInfo(curActivity.getPackageName(),
+                    PackageManager.GET_PERMISSIONS);
+            neededPermissions.clear();
+            for (String permission : packageInfo.requestedPermissions) {
+                PermissionInfo permissionInfo = packageManager.getPermissionInfo(permission, PackageManager.GET_META_DATA);
+                if (permissionInfo.protectionLevel != PermissionInfo.PROTECTION_DANGEROUS)
+                    continue;
+                if (curActivity.checkCallingOrSelfPermission(permission) == PackageManager.PERMISSION_GRANTED)
+                    continue;
+                neededPermissions.add(permission);
+            }
+        } catch (Exception error) {
+            throw new RuntimeException("Error while query permission " + error.getMessage());
+        }
+        return neededPermissions.size();
+    }
+
+
+    public static int dpyToPx(int dpy) {
+        return (int) metrics.ydpi * dpy / 160;
+    }
+
 }

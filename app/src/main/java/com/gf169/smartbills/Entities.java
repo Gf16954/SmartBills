@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.android.gms.common.util.CollectionUtils;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
@@ -464,7 +465,7 @@ class Entities {
 
             Entities.Stage stage = null;
 
-            Set<Stage> s = searchEntities(
+            ArrayList<Stage> s = searchEntities(
                     "wfstp$Stage", Stage.class, "stage-edit",  // Очень подробный
                     "name", "=", name.toString(), null);
             if (CollectionUtils.isEmpty(s)) {
@@ -553,7 +554,7 @@ class Entities {
                 }
                 id = userInfo.id;
             }
-            Set<ExtUser> s = searchEntities(
+            ArrayList<ExtUser> s = searchEntities(
                     "bills$ExtUser", ExtUser.class, "user-constraint-data",
                     "id", "=", id, null);
             if (CollectionUtils.isEmpty(s)) {
@@ -567,7 +568,7 @@ class Entities {
         static ExtUser buildByLogin(String login) {
             Log.d(TAG, "ExtUser.build");
 
-            Set<ExtUser> s = searchEntities(
+            ArrayList<ExtUser> s = searchEntities(
                     "bills$ExtUser", ExtUser.class, "user-constraint-data",
                     "login", "=", login, null);
             if (CollectionUtils.isEmpty(s)) {
@@ -579,7 +580,7 @@ class Entities {
         }
 
         Employee getEmployee() {
-            Set<Employee> s = searchEntities(
+            ArrayList<Employee> s = searchEntities(
                     "bills$Employee", Employee.class,
                     null, "user", "=", id, null);
             if (CollectionUtils.isEmpty(s)) {

@@ -9,6 +9,7 @@ import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
@@ -34,6 +35,7 @@ import java.util.List;
 
 import static com.gf169.smartbills.Common.cr;
 import static com.gf169.smartbills.CubaRequester.TOKEN_KIND_CUBA_ACCESS_TOKEN;
+import static com.gf169.smartbills.Utils.message;
 
 public class LoginActivity extends AppCompatActivity {
     static final String TAG = "gfLoginActivity";
@@ -325,6 +327,7 @@ public class LoginActivity extends AppCompatActivity {
                 String cubaAccessToken = intent.getStringExtra("accessToken");
                 Log.d(TAG, "onActivityResult cubaAccessToken " + cubaAccessToken);
                 if (cubaAccessToken != null) {
+                    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this); // можно менять на ходу
                     cr = new CubaRequester(cubaAccessToken, TOKEN_KIND_CUBA_ACCESS_TOKEN);
                     finish();
                     return;
@@ -357,6 +360,7 @@ public class LoginActivity extends AppCompatActivity {
                     Log.d(TAG, "onActivityResult googleIdToken invalid!");
                 }
 
+                SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this); // можно менять на ходу
                 cr = new CubaRequester(googleIdToken, CubaRequester.TOKEN_KIND_GOOGLE_ID_TOKEN);
                 if (cr.accessToken != null) {
                     finish(); // успех
@@ -368,11 +372,12 @@ public class LoginActivity extends AppCompatActivity {
             }
             if (error != null) {
                 String s = "Не удалось авторизоваться на сервере CUBA: " + error;
-                Log.d(TAG, "onActivityResult " + s);
+//                Log.d(TAG, "onActivityResult " + s);
 //                Snackbar.make(findViewById(R.id.google_sign_in_button)
 //                        , s, Snackbar.LENGTH_LONG).show();
-                Toast.makeText(this,   // В отличие от snackbar'a показывает любое число строк, а не 2
-                        s, Toast.LENGTH_LONG).show();
+//                Toast.makeText(this,   // В отличие от snackbar'a показывает любое число строк, а не 2
+//                        s, Toast.LENGTH_LONG).show();
+                message(s);
             }
         }
     }

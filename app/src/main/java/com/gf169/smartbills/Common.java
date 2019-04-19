@@ -1,5 +1,6 @@
 package com.gf169.smartbills;
 
+import android.app.Activity;
 import android.content.Context;
 import android.support.constraint.ConstraintLayout;
 import android.support.v7.widget.AppCompatSpinner;
@@ -41,7 +42,8 @@ public class Common {
     static final String ROLE_USER = "Пользователь";
 
     static String packageName;
-    static MainActivity curActivity; // Не уберу!
+    static Activity curActivity; // Не уберу!
+    static MainActivity mainActivity;
     static CubaRequester cr;
     static Class mainEntityClass;
     static Entities.ExtUser curUser;
@@ -182,7 +184,7 @@ public class Common {
                     a.add(0, "");  // Пустой
                 }
             } else if (ATTR_TYPE_ASSOCIATION.equals(attributeType)) {
-                Set<Get> set = searchEntities(
+                ArrayList<Get> set = searchEntities(
                         type, // bills$Company
                         getReferencedClass(), // Entity$Company.class
                         null, null, null, null, null);
@@ -324,7 +326,49 @@ public class Common {
         }
     }
 
-    static <T> Set<T> searchEntities(
+    /*
+        static <T> Set<T> searchEntities(
+                String entityName,
+                Class cl,
+                String view,
+                String filterProperty,
+                String filterOperator,
+                String filterValue,
+                String sort) {
+
+            Log.d(TAG, "searchEntities " +
+                    entityName + " " + filterProperty + " " + filterOperator + " " + filterValue);
+
+            Set<T> result = null;
+
+            String filterStr = null;
+            if (filterProperty != null) {
+                filterStr = "{\"conditions\":[{" +
+                        "\"property\":\"" + filterProperty + "\"," +
+                        "\"operator\":\"" + filterOperator + "\"," +
+                        "\"value\":";
+                filterStr += filterOperator.equals("in") ? "[" + filterValue + "]" : "\"" + filterValue + "\"";
+                filterStr += "}]}";
+            }
+
+            if (cr.getEntitiesList(entityName
+                    , filterStr, view, 0, 0, sort
+                    , false, false, false)) {
+                try {
+                    result = OM.readValue(cr.responseBodyStr,
+                            OM.getTypeFactory().constructCollectionType(Set.class, cl));
+                } catch (Exception e) {
+                    message(e.toString());
+                    e.printStackTrace();
+                }
+            } else {
+                message("Ошибка при поиске сущностей");
+            }
+            Log.d(TAG, "searchEntities " + (result == null ? "null" : result.toString()));
+            return result;
+        }
+    */
+    static <T> ArrayList<T> searchEntities(
             String entityName,
             Class cl,
             String view,
@@ -336,7 +380,7 @@ public class Common {
         Log.d(TAG, "searchEntities " +
                 entityName + " " + filterProperty + " " + filterOperator + " " + filterValue);
 
-        Set<T> result = null;
+        ArrayList<T> result = null;
 
         String filterStr = null;
         if (filterProperty != null) {
@@ -353,7 +397,7 @@ public class Common {
                 , false, false, false)) {
             try {
                 result = OM.readValue(cr.responseBodyStr,
-                        OM.getTypeFactory().constructCollectionType(Set.class, cl));
+                        OM.getTypeFactory().constructCollectionType(ArrayList.class, cl));
             } catch (Exception e) {
                 message(e.toString());
                 e.printStackTrace();

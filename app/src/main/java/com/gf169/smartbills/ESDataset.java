@@ -7,7 +7,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.ArrayList;
 
 import static com.gf169.smartbills.Common.cr;
-import static com.gf169.smartbills.Common.curActivity;
+import static com.gf169.smartbills.Common.mainActivity;
 
 class ESDataset extends Dataset<Entities.Query> {
     ESDataset(String tag) {
@@ -18,7 +18,7 @@ class ESDataset extends Dataset<Entities.Query> {
     public ArrayList<Entities.Query> loadChunk() {
         Log.d(TAG, "loadChunk");
 
-        String filterStr = curActivity.filterStr;  // curActivity !!!
+        String filterStr = mainActivity.filterStr;  // mainActivity !!!
         String queryName = null;
         String parmsStr = null;
         if (filterStr != null && filterStr.contains("\n")) {

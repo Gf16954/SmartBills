@@ -4,7 +4,7 @@ import android.view.View;
 import android.widget.TextView;
 
 import static com.gf169.smartbills.Common.SDF_OUR;
-import static com.gf169.smartbills.Common.curActivity;
+import static com.gf169.smartbills.Common.mainActivity;
 import static com.gf169.smartbills.ESEntityLists.MY_QUERIES;
 import static com.gf169.smartbills.ESEntityLists.MY_SUBORDINATES_QUERIES;
 
@@ -19,7 +19,7 @@ class ESMyViewHolder extends MainActivity.MyViewHolder {
     private TextView vStep;
 
     ESMyViewHolder(View v) {
-        curActivity.super(v);           // curActivity !!!
+        mainActivity.super(v);           // curActivity !!!
 
         vNumber = v.findViewById(R.id.textViewNumber);
         vDate = v.findViewById(R.id.textViewDate);
@@ -30,8 +30,8 @@ class ESMyViewHolder extends MainActivity.MyViewHolder {
         vComment = v.findViewById(R.id.textViewComment);
 
         vStep = v.findViewById(R.id.textViewStep);
-        if (!curActivity.listKindNames.get(curActivity.entityListNumber).equals(MY_QUERIES) &&
-                !curActivity.listKindNames.get(curActivity.entityListNumber).equals(MY_SUBORDINATES_QUERIES)) {
+        if (!mainActivity.listKindNames.get(mainActivity.entityListNumber).equals(MY_QUERIES) &&
+                !mainActivity.listKindNames.get(mainActivity.entityListNumber).equals(MY_SUBORDINATES_QUERIES)) {
             vStep.setVisibility(View.GONE);
         }
     }
@@ -54,7 +54,7 @@ class ESMyViewHolder extends MainActivity.MyViewHolder {
 
         paintItem(v, isSelected, query);
     }
-
+/*
     @Override
     protected void paintItem(View v, boolean isSelected, Object entity) {
         Entities.Query query = (Entities.Query) entity; // Entity Specific
@@ -65,4 +65,5 @@ class ESMyViewHolder extends MainActivity.MyViewHolder {
         );
         v.setBackgroundColor(color);
     }
+*/
 }
