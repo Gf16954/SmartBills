@@ -11,7 +11,6 @@ import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
-import android.os.Bundle;
 import android.os.SystemClock;
 import android.support.v4.content.FileProvider;
 import android.util.DisplayMetrics;
@@ -30,7 +29,6 @@ import java.util.LinkedList;
 import java.util.List;
 
 import static com.gf169.smartbills.Common.curActivity;
-import static com.gf169.smartbills.Common.packageName;
 
 public class Utils {
     static DisplayMetrics metrics = Resources.getSystem().getDisplayMetrics();
@@ -47,30 +45,32 @@ public class Utils {
         }
     }
 
-    static void showExtras(String TAG, Intent intent) {
-        Log.d(TAG, "showExtras");
+    /*
+        static void showExtras(String TAG, Intent intent) {
+            Log.d(TAG, "showExtras");
 
-        if (intent.getExtras() != null) {
-            for (String key : intent.getExtras().keySet()) {
-                Log.d(TAG, key);
+            if (intent.getExtras() != null) {
+                for (String key : intent.getExtras().keySet()) {
+                    Log.d(TAG, key);
+                }
+            } else {
+                Log.d(TAG, "No extras");
             }
-        } else {
-            Log.d(TAG, "No extras");
         }
-    }
 
-    static void showBundleContents(String TAG, Bundle bundle) {
-        Log.d(TAG, "showBundleContents");
+        static void showBundleContents(String TAG, Bundle bundle) {
+            Log.d(TAG, "showBundleContents");
 
-        if (bundle != null) {
-            for (String key : bundle.keySet()) {
-                Log.d(TAG, key + " " + bundle.get(key));
+            if (bundle != null) {
+                for (String key : bundle.keySet()) {
+                    Log.d(TAG, key + " " + bundle.get(key));
+                }
+            } else {
+                Log.d(TAG, "null");
             }
-        } else {
-            Log.d(TAG, "null");
         }
-    }
 
+    */
     static Date dateStr2Date(String dateStr, SimpleDateFormat sdf) {
         try {
             return sdf.parse(dateStr);
@@ -93,22 +93,23 @@ public class Utils {
 */
     }
 
-    static String getCallStack(int iStart) {
-        StackTraceElement[] st = new Exception().getStackTrace();
-        String r = "", s;
-        for (int i = iStart; i < st.length; i++) {
-            StackTraceElement ste = st[i];
-            s = ste.getClassName();
-            if (s.startsWith(packageName)) { // Мой
-                s = s.substring(s.lastIndexOf(".") + 1);
-                r += "<-" + s + ":" + ste.getMethodName() + ":" + ste.getLineNumber();
+    /*
+        static String getCallStack(int iStart) {
+            StackTraceElement[] st = new Exception().getStackTrace();
+            String r = "", s;
+            for (int i = iStart; i < st.length; i++) {
+                StackTraceElement ste = st[i];
+                s = ste.getClassName();
+                if (s.startsWith(packageName)) { // Мой
+                    s = s.substring(s.lastIndexOf(".") + 1);
+                    r += "<-" + s + ":" + ste.getMethodName() + ":" + ste.getLineNumber();
+                }
+
             }
-
+            return r;
         }
-        return r;
-    }
-
-    static String formLogTag() {
+    */
+    static String formLogTag() { // Common:searchEntities:406
         StackTraceElement ste = new Exception().getStackTrace()[3];
         String s = ste.getClassName();
         s = s.substring(s.lastIndexOf(".") + 1);
@@ -118,12 +119,8 @@ public class Utils {
         return s + ":" + ste.getMethodName() + ":" + ste.getLineNumber();
     }
 
-    public static void logD2(String message) {
-        Log.d("logD2 " + formLogTag(), message);
-    }
-
     public static void message(String message) {
-        logD2(message);
+        Log.w("gfMessage " + formLogTag(), message);
 
         curActivity.runOnUiThread(() -> {
             Toast.makeText(curActivity,   // В отличие от snackbar'a показывает любое число строк, а не 2

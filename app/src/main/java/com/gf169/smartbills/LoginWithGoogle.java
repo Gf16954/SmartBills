@@ -2,8 +2,6 @@ package com.gf169.smartbills;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.util.Log;
-import android.widget.Toast;
 
 import com.google.android.gms.auth.api.Auth;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
@@ -20,6 +18,7 @@ import com.google.api.client.json.gson.GsonFactory;
 import java.util.Collections;
 
 import static com.gf169.smartbills.Utils.doInBackground;
+import static com.gf169.smartbills.Utils.message;
 import static com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes.SIGN_IN_CANCELLED;
 
 class LoginWithGoogle {
@@ -68,8 +67,7 @@ class LoginWithGoogle {
 //                curActivity.finish();
             } else {
                 String s = "Вход не выполнен, ошибка " + statusCode;
-                Log.d(TAG, "onActivityResult " + s);
-                Toast.makeText(curActivity, s, Toast.LENGTH_LONG).show();
+                message(s);
             }
         }
         return null;

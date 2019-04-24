@@ -106,6 +106,12 @@ class Entities {
         }
 
         @Override
+//        public String getWorkflow() { Если есть такой getter, то при serialization его использует, а не берет непосредственно значение поле
+        public String getWorkflowId() {
+            return workflow == null ? null : workflow.id;
+        }
+
+        @Override
         public String getStepName() {
             return stepName;
         }
@@ -120,8 +126,6 @@ class Entities {
             return (stepName == null || stepName.equals(PROBLEM_QUERIES)) &&
                     initiator.user.equals(extUser);
         }
-
-
     }
 
     public static class Clause implements Get {
@@ -462,8 +466,6 @@ class Entities {
 
         static Stage build(CharSequence name) {
             Log.d(TAG, "Stage.build " + name);
-
-            Entities.Stage stage = null;
 
             ArrayList<Stage> s = searchEntities(
                     "wfstp$Stage", Stage.class, "stage-edit",  // Очень подробный

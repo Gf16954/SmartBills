@@ -44,7 +44,7 @@ public class EditCollectionDialogFragment extends DialogFragment
     ListView listView;
     static ArrayList<Object> collectionItems;  // А также сохраняется при перевороте! Можно не делать onSaveInstanceState !
 
-    private static final int PICK_FILE_REQUEST_CODE = 1;
+    private static final int REQUEST_CODE_PICK_FILE = 1;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -161,7 +161,7 @@ public class EditCollectionDialogFragment extends DialogFragment
         if (ef.isAttachments()) {
             String[] mimeTypes =
                     {"image/*", "application/pdf", "application/msword", "application/vnd.ms-excel"};
-            pickFile(mimeTypes, this, PICK_FILE_REQUEST_CODE);
+            pickFile(mimeTypes, this, REQUEST_CODE_PICK_FILE);
         } else {
             message("Еще не сделано");
         }
@@ -225,7 +225,7 @@ public class EditCollectionDialogFragment extends DialogFragment
     public void onActivityResult(int requestCode, int resultCode, Intent resultData) {
         Log.d(TAG, "onActivityResult");
 
-        if (requestCode == PICK_FILE_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
+        if (requestCode == REQUEST_CODE_PICK_FILE && resultCode == Activity.RESULT_OK) {
             if (resultData != null) {
                 Uri uri = resultData.getData();  // Выбрали файл
                 Log.i(TAG, "Uri: " + uri.toString());

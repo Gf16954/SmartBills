@@ -7,6 +7,7 @@ import static com.gf169.smartbills.Common.mainActivity;
 class ESMisc {
     public static String mainEntityName = "bills$Query";
 
+    //    Обработка финансовых заявок
     public static void iniEntity(Object entity) {
         Entities.Query query = (Entities.Query) entity;
 
@@ -24,43 +25,36 @@ class ESMisc {
         query.number = null;
         query.status = null;
         query.stepName = null;
+        query.paymentDate = null;
+        query.images = null;
+
     }
 
     public static String[] getMandatoryFields(String stepName) {
         if (stepName == null) {
-            String a[] = {"Сумма", "Компания", "Инициатор"};
+            String a[] = {"Сумма", "Компания", "Инициатор",
+                    "Наименование поставщика", "ИНН", "Тип платежа", "Комментарий"};
             return a;
         }
         String a[] = {};
         return a;
     }
 
-    public static String[] getEditableFields(String stepName) {
-        if (stepName == null) {
-            String a[] = {"Номер", "Тип платежа", "Проект", "Статья ДДС", "НДС",  // ОСТАЛЬНЫЕ редактируемые поля
-                    "Наименование поставщика", "ИНН", "Срок платежа", "Назначение платежа",   // ,"Наличие в бюджете"
-                    "Срочность", "Комментарий", "Вложения"};
-            return a;
-        } else if (stepName.equals("Финансовый контроль")) {
-            String a[] = {"НДС", "Вложения"};  // ToDo Уточнить
-            return a;
-        }
-        String a[] = {};
+    public static String[] getEditableFields() {
+        String a[] = {"Номер", "Тип платежа", "Проект", "Статья ДДС", "НДС",  // ОСТАЛЬНЫЕ редактируемые поля
+                "Наименование поставщика", "ИНН", "Срок платежа", "Назначение платежа",   // ,"Наличие в бюджете"
+                "Срочность", "Комментарий", "Вложения"};
         return a;
     }
 
     static String processEntity(Object entity, String sOk, String sNotOk) {
-        Entities.Query query = (Entities.Query) entity;
-
-        if (((Common.GetWorkflow) query).getStepName() == null) {  // В работу
-            if (cr.postJSON("query/process?id=" +
-                    query.getId(), "{}", true)) {
-                return sOk;
-            } else {
-                return sNotOk + cr.error;
-            }
+//        if (cr.postJSON("query/process?id=" + ((Common.Get) entity).getId(), "{}", 2)) {
+        if (cr.postJSON("start?entityId=" + ((Common.Get) entity).getId() +
+                "&entityName=" + mainEntityName, "{}", 3)) {
+            return sOk;
+        } else {
+            return sNotOk + cr.error;
         }
-        return "ошибка: не умеем обрабатывать заявку в этом статусе";
     }
 
     static int getItemColor(boolean isSelected, Object entity) {

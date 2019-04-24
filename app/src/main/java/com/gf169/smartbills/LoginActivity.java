@@ -11,7 +11,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
-import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.Log;
@@ -25,7 +24,6 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
@@ -34,6 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static com.gf169.smartbills.Common.cr;
+import static com.gf169.smartbills.Common.curActivity;
 import static com.gf169.smartbills.CubaRequester.TOKEN_KIND_CUBA_ACCESS_TOKEN;
 import static com.gf169.smartbills.Utils.message;
 
@@ -123,6 +122,20 @@ public class LoginActivity extends AppCompatActivity {
             attemptLogin();
         }
 
+    }
+
+    @Override
+    public void onPause() {
+        Log.d(TAG, "onPause");
+        super.onPause();
+    }
+
+    @Override
+    public void onResume() {
+        Log.d(TAG, "onResume");
+        super.onResume();
+
+        curActivity = this;
     }
 
     private String loadPassword(String userName) {
@@ -265,6 +278,7 @@ public class LoginActivity extends AppCompatActivity {
 
             if (success) {
 
+                setResult(RESULT_OK, null);
                 finish();
 
                 // В случае успешного входа и если стоит птичка сохраняем пароль
@@ -277,9 +291,7 @@ public class LoginActivity extends AppCompatActivity {
                     mPasswordView.setError(getString(R.string.error_incorrect_password));
                     mPasswordView.requestFocus();
                 } else {
-                    Snackbar.make(findViewById(R.id.sign_in_button)
-                            , "Не удалось подключиться к серверу:\n" + cr.error, Snackbar.LENGTH_LONG)
-                            .setAction("Action", null).show();
+                    message("Не удалось подключиться к серверу:\n" + cr.error);
                 }
             }
         }
@@ -339,7 +351,7 @@ public class LoginActivity extends AppCompatActivity {
                 } else {
                     error += "неизвестная ошибка";
                 }
-                Toast.makeText(this, error, Toast.LENGTH_LONG).show();
+                message(error);
             }
 
         } else if (requestCode == REQUEST_GOOGLE_SIGNIN_3) {
@@ -372,11 +384,6 @@ public class LoginActivity extends AppCompatActivity {
             }
             if (error != null) {
                 String s = "Не удалось авторизоваться на сервере CUBA: " + error;
-//                Log.d(TAG, "onActivityResult " + s);
-//                Snackbar.make(findViewById(R.id.google_sign_in_button)
-//                        , s, Snackbar.LENGTH_LONG).show();
-//                Toast.makeText(this,   // В отличие от snackbar'a показывает любое число строк, а не 2
-//                        s, Toast.LENGTH_LONG).show();
                 message(s);
             }
         }

@@ -43,6 +43,7 @@ import static com.gf169.smartbills.Common.TYPE_STRING;
 import static com.gf169.smartbills.Common.TYPE_UUID;
 import static com.gf169.smartbills.Common.VALUE_NO;
 import static com.gf169.smartbills.Common.VALUE_YES;
+import static com.gf169.smartbills.Common.adjustFragmentSize;
 import static com.gf169.smartbills.Common.formEntityFieldsArray;
 import static com.gf169.smartbills.Common.mainEntityClass;
 import static com.gf169.smartbills.ESMisc.mainEntityName;
@@ -103,7 +104,7 @@ public class FilterDialogFragment extends DialogFragment implements View.OnClick
         getDialog().setTitle("Условия поиска");
 
         view = inflater.inflate(R.layout.fragment_filter, null);
-//        adjustFragmentSize(view,0.5F, 0.9F);
+        adjustFragmentSize(view, 0.5F, 0.9F);
 // TODO: 31.03.2019 Заставить работать правильно         
 
         view.findViewById(R.id.buttonApplyFilter).setOnClickListener(this);

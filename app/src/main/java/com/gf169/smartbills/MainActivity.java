@@ -1,6 +1,7 @@
 package com.gf169.smartbills;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -35,7 +36,9 @@ import static com.gf169.smartbills.Common.Get;
 import static com.gf169.smartbills.Common.GetWorkflow;
 import static com.gf169.smartbills.Common.cr;
 import static com.gf169.smartbills.Common.curActivity;
+import static com.gf169.smartbills.Common.curEmployee;
 import static com.gf169.smartbills.Common.curUser;
+import static com.gf169.smartbills.Common.curWorkflow;
 import static com.gf169.smartbills.Common.mainActivity;
 import static com.gf169.smartbills.Common.mainEntityClass;
 import static com.gf169.smartbills.Common.packageName;
@@ -44,6 +47,7 @@ import static com.gf169.smartbills.ESEntityLists.getFilterStr;
 import static com.gf169.smartbills.ESMisc.getItemColor;
 import static com.gf169.smartbills.ESMisc.mainEntityName;
 import static com.gf169.smartbills.EntityActions.ACTION_CREATE;
+import static com.gf169.smartbills.EntityActions.curStage;
 import static com.gf169.smartbills.Utils.grantMeAllDangerousPermissions;
 import static com.gf169.smartbills.Utils.message;
 import static com.gf169.smartbills.Utils.tintIcon;
@@ -289,6 +293,8 @@ public class MainActivity extends AppCompatActivity
     public void onResume() {
         Log.d(TAG, "onResume");
         super.onResume();
+
+        curActivity = this;
     }
 
     @Override
@@ -359,7 +365,7 @@ public class MainActivity extends AppCompatActivity
         } else if (menu.size() == 2 &&  // Есть только Просмотреть - сразу проваливаемся
                 entityActions.getActionByDisplayName(menu.getItem(1).getTitle().toString()).
                         equals(EntityActions.ACTION_EDIT)) {
-            entityActions.execAction(EntityActions.ACTION_EDIT);
+            entityActions.execAction(menu.getItem(1).getTitle().toString());
         } else {
             actionsPopup.show();
         }
@@ -383,29 +389,47 @@ public class MainActivity extends AppCompatActivity
 
     protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
         if (requestCode == REQUEST_CODE_LOGIN) {
-            if (cr != null && cr.isReady()) {
+            if (resultCode == Activity.RESULT_OK) {
 
                 if (new Experiment().exec()) return;
 
-                curUser = Entities.ExtUser.build(null);
-                if (curUser != null) {
-                    dontFill = false;  // Уже токен получен, его надо будет сохранить
-                    if (!CollectionUtils.isEmpty(listKindNames))
-                        listKindNames.clear();  // Пользователь сменился (возможно)
+                if (cr != null && cr.isReady()) {
+
+                    curUser = Entities.ExtUser.build(null);
+                    if (curUser != null) {
+                        dontFill = false;  // Уже токен получен, его надо будет сохранить
+                        if (!CollectionUtils.isEmpty(listKindNames))
+                            listKindNames.clear();  // Пользователь сменился (возможно)
+                    } else {
+                        cr = null;
+                        Utils.message("Не удалось получить параметры текущего пользователя");
+                    }
                 } else {
                     cr = null;
-                    Utils.message("Не удалось получить параметры текущего пользователя");
                 }
-            } else {  // Юзер не смог залогиниться и нажал Back
-                cr = null;
+            } else {
+                if (!cr.isReady()) { // Пытался войти и не смог - испортил cr
+                    cr = null;
+                } else {  // Вошел и сразу вышел, не нажав кнопок Войти
+                    return;
+                }
+            }
+            if (cr == null) {
                 curUser = null;
             }
+            curEmployee = null;  // Все определит заново
+            curWorkflow = null;
+            curStage = null;
+            entityListNumber = 0;
 
-            invalidateOptionsMenu();
             showList(false, null, null);
+            invalidateOptionsMenu();
+
 
         } else if (requestCode == REQUEST_CODE_SETTINGS) {
-            login();
+            if (resultCode == Activity.RESULT_OK) {
+                login();
+            }
         }
     }
 
@@ -428,6 +452,10 @@ public class MainActivity extends AppCompatActivity
             entityListSpinnerAdapter.notifyDataSetChanged();
         }
 
+        if (entityListNumber >= listKindNames.size()) {  // Лишили прав
+            entityListNumber = 0;
+        }
+        ;
         filterStr = getFilterStr(listKindNames.get(entityListNumber));
 
         dataset = new ESDataset("tag");
@@ -637,7 +665,7 @@ public class MainActivity extends AppCompatActivity
         new EditDialogFragment().show(getFragmentManager(), "EditDialogFragment");
     }
 
-    void processEntity(Object[] entities) {
+    void processEntity(Object[] entities) {  // В работу
         String mes = "", sOk = "OK", sNotOk = "Ошибка: ";
 
         for (Object entity : entities) {
@@ -684,7 +712,39 @@ public class MainActivity extends AppCompatActivity
             ESMisc.clearEntity(o);
             editEntity(o, false);
         } catch (Exception e) {
+            message(e.toString());
             e.printStackTrace();
+        }
+    }
+
+    void execWorkflowAction(Object[] entities, String workflowId, String stepId, String actionId) {
+        String mes = "", sOk = "OK", sNotOk = "Ошибка: ";
+
+/* ToDo Переделать с проверкой (performable)
+        String s="";
+        for (Object entity: entities) {
+            s+="entityId="+((Common.Get) entity).getId()+"&";
+        }
+*/
+        for (Object entity : entities) {
+            String s = cr.postJSON("perform?" +
+                            "entityId=" + ((Common.Get) entity).getId() +
+                            "&workflowId=" + workflowId +
+                            "&stepId=" + stepId +
+                            "&actionId=" + actionId,
+                    "{}", 3) ? sOk : sNotOk + cr.error;
+            mes += entity + " - " + s + "\n";
+        }
+        message(mes);
+
+        if (mes.contains(sOk + "\n")) { // Хоть одна усешно
+            (sis = new Bundle()).putParcelable("layoutManagerState",
+                    layoutManager.onSaveInstanceState());
+            curActivity.runOnUiThread(() -> {
+                showList(false,  // Показываем список
+                        dataset.getSelectedItemId(),  // Хотим сохранить выделение
+                        null);
+            });
         }
     }
 
@@ -697,7 +757,6 @@ public class MainActivity extends AppCompatActivity
 
 // Todo
 // +1. OnSaveInstance и т.д.
-// 2. Сортировка?
 // 3. Номер текущей записи показать?
 // -4. Фильтр по срочности?
 // -5. adapter.notifyDataSetChanged() после загрузки каждого chunk'a, а не всей страницы ?
@@ -707,7 +766,6 @@ public class MainActivity extends AppCompatActivity
 // +9. Class utils
 // 10. Показывать число загруженных записей ?
 // +11. В первых 2 списках показывать статус заявки
-// 12. FAB перерисовать с числом выбранных
 // +13. Дабавить refresh
 // +14. Вложения
 // 15. Оптимизировать delete (добавить поле)?
@@ -720,14 +778,14 @@ public class MainActivity extends AppCompatActivity
     +1.2. .pdf,.xls,.doc,.docx,.xlsx
     +1.3. Из облака - Google drive
     1.4. Пассивно
-2. Проталкивание заявки дальше из состояния Финансовый контроль
++2. Проталкивание заявки дальше из состояния Финансовый контроль
 3. Наведение красоты:
     3.1. Подбор иконкок, на рабочий стол и в action bar
     +3.2. Подбор цветов
     3.3. Точный учет размеров экрана, в т.ч. планшет/ландшафт (показ
     текущей заявки рядом со списком, как в gmail)
     +3.4. Индикатор ожидания (песочные часы) везде где нужно: при логине,
-    при загрузке первой порции заявок, ...
+    при загрузке первой порции заявок, ...  Вставить всюду!!!
     3.5. На FAB (красной кнопке) писать число отмеченных заявок - трудно:(
     3.6. Анимацию куда-нибудь
 4. Оптимизация везде

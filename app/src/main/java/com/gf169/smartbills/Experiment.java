@@ -138,6 +138,7 @@ class Experiment {
         Log.d(TAG, "gfDoInBackground exec: stop2");
         if (true) return true;
 */
+//        cr.getSomething("all",true); if (true) return true; // Пусто
 
         return false;
     }

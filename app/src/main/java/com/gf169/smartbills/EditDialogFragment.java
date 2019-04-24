@@ -116,6 +116,7 @@ public class EditDialogFragment extends DialogFragment
     @Override
     public void onCreate(Bundle savedInstanceState) {
         Log.d(TAG, "onCreate");
+
         super.onCreate(savedInstanceState);
         // В стиле сказано, что должен быть заголовок, в семерке по умолчанию нет.
         // Должно быть именно здесь, иначе не работает
@@ -189,12 +190,16 @@ public class EditDialogFragment extends DialogFragment
             if (iErPos >= 0) {
                 return;    // ToDo Встать на ошибочное поле
             }
+//            DoInBackground.run(curActivity, () -> {
             if (send()) {
+//                    mainActivity.runOnUiThread(()-> {
                 mainActivity.showList(     // Возвращаемся в главный список
                         false, ep.objOut.getId(), // Созданную выделяем
-//                        ((MainActivity) getActivity()).dataset.getMarkedItemIdsString());
+                        //                        ((MainActivity) getActivity()).dataset.getMarkedItemIdsString());
                         null);
+//                    });
             }
+//            });
             dismiss();
 
         } else if (v == v.findViewById(R.id.buttonCancel)) {
@@ -335,12 +340,6 @@ public class EditDialogFragment extends DialogFragment
                         !ep.editMode.equals(EDIT_MODE_VIEW) && item.editability.equals(EDITABILITY_EDITABLE) ?
                                 R.color.colorFieldEditable :
                                 R.color.colorFieldNotEditable);
-/*
-        int color = getResources().getColor(
-                item.editability.equals(EDITABILITY_MANDATORY) ? R.color.colorFieldNotEmpty :
-                item.editability.equals(EDITABILITY_EDITABLE) ? R.color.colorFieldEditable :
-                R.color.colorFieldNotEditable);
-*/
         itemView.setBackgroundColor(color);
     }
 
@@ -361,7 +360,7 @@ public class EditDialogFragment extends DialogFragment
 
         ArrayList<EntityField> r = new ArrayList<>(entityFieldsArray);
         ArrayList<String> mandatoryFields = new ArrayList<>(Arrays.asList(ESMisc.getMandatoryFields(stepName)));
-        ArrayList<String> editableFields = new ArrayList<>(Arrays.asList(ESMisc.getEditableFields(stepName)));
+        ArrayList<String> editableFields = Common.getEditableFields(((GetWorkflow) ep.objIn).getWorkflowId(), stepName);
 
         for (int i = r.size() - 1; i >= 0; i--) {
             EntityField ef = r.get(i);

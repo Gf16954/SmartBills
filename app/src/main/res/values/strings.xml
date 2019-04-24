@@ -19,10 +19,11 @@
         completions.
     </string>
 
-    <string name="cuba_host">bills.groupstp.ru</string>
+    <string name="cuba_host">billstest.groupstp.ru</string>
     <string name="cuba_port">9090</string>
     <string name="cuba_base_url">app/rest/v2</string>
     <string name="cuba_base_url_2">app/rest/api</string>
+    <string name="cuba_base_url_3">app/rest/workflow</string>
     <string name="cuba_tokens_url">app/rest/google/login</string>
     <integer name="max_request_duration">60</integer>
 

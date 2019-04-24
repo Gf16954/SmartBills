@@ -36,7 +36,8 @@ public class CubaRequester {
     static final int TOKEN_KIND_GOOGLE_CODE_AUTH = 4; // https://developers.google.com/identity/sign-in/android/offline-access
 
     private String serverUrl;
-    private String serverUrlAlt;
+    private String serverUrl2;
+    private String serverUrl3;
     private final String restApiAuthorization = "Basic Y2xpZW50OnNlY3JldA==";
     private String tokensUrl;
     private int maxRequestDuration; // sec
@@ -61,10 +62,12 @@ public class CubaRequester {
         String cubaPort = settings.getString("cuba_port", "НЕ_ЗАДАН_CUBA_PORT");
         String cubaBaseUrl = settings.getString("cuba_base_url", "НЕ_ЗАДАН_CUBA_BASE_URL");
         String cubaBaseUrl2 = settings.getString("cuba_base_url_2", "НЕ_ЗАДАН_CUBA_BASE_URL_2");
+        String cubaBaseUrl3 = settings.getString("cuba_base_url_3", "НЕ_ЗАДАН_CUBA_BASE_URL_3");
         tokensUrl = settings.getString("cuba_tokens_url", "НЕ_ЗАДАН_CUBA_TOKENS_URL");
 
         serverUrl = "http://" + cubaHost + ":" + cubaPort + "/" + cubaBaseUrl + "/"; // http://billstest.groupstp.ru:9090/app/rest/v2/
-        serverUrlAlt = "http://" + cubaHost + ":" + cubaPort + "/" + cubaBaseUrl2 + "/"; // http://billstest.groupstp.ru:9090/app/rest/api/
+        serverUrl2 = "http://" + cubaHost + ":" + cubaPort + "/" + cubaBaseUrl2 + "/"; // http://billstest.groupstp.ru:9090/app/rest/api/
+        serverUrl3 = "http://" + cubaHost + ":" + cubaPort + "/" + cubaBaseUrl3 + "/"; // http://billstest.groupstp.ru:9090/app/rest/workflow/
         tokensUrl = "http://" + cubaHost + ":" + cubaPort + "/" + tokensUrl; // http://billstest.groupstp.ru:9090/app/rest/google/login
         maxRequestDuration = settings.getInt("max_request_duration", 60) * 1000;
     }
@@ -158,7 +161,9 @@ public class CubaRequester {
                     contentType = response.body().contentType();
                     Log.d(TAG, "execRequest2 response contentType=" + contentType);
 
-                    if (contentType.toString().startsWith("application/json")) {
+                    if (contentType == null) { // Delete возвращает
+
+                    } else if (contentType.toString().startsWith("application/json")) {
                         responseBodyStr = response.body().string();
                         Log.d(TAG, "execRequest2 responseBody length=" + responseBodyStr.length());
                         logDLong(TAG, "execRequest2 responseBody\n" + responseBodyStr);
@@ -287,6 +292,19 @@ public class CubaRequester {
         return execRequest();
     }
 
+    boolean getSomething(String URLtail, int altBaseUrlNumber) {
+        Log.d(TAG, "getSomething " + URLtail);
+
+        request = new Request.Builder()
+                .url((altBaseUrlNumber == 2 ? serverUrl2 :
+                        altBaseUrlNumber == 3 ? serverUrl3 :
+                                serverUrl) + URLtail)
+                .header("Authorization", "Bearer " + accessToken)
+                .get()
+                .build();
+        return execRequest();
+    }
+
     boolean getEntitiesList(String entityName, String filter, String view, int limit, int offset,
                             String sort, boolean returnNulls, boolean returnCount,
                             boolean dynamicAttributes) {
@@ -325,11 +343,13 @@ public class CubaRequester {
         return execRequest();
     }
 
-    boolean postJSON(String URLTail, String bodyStr, boolean useAltServer) {
-        String serverURL = serverUrl;
-        serverUrl = serverUrlAlt;
+    boolean postJSON(String URLTail, String bodyStr, int altBaseUrlNumber) {
+        String serverUrlBack = serverUrl;
+        serverUrl = altBaseUrlNumber == 2 ? serverUrl2 :
+                altBaseUrlNumber == 3 ? serverUrl3 :
+                        serverUrl;
         boolean r = postJSON(URLTail, bodyStr);
-        serverUrl = serverURL;
+        serverUrl = serverUrlBack;
         return r;
     }
 
@@ -438,8 +458,6 @@ public class CubaRequester {
         }
     }
 }
-// Todo Все в ресурсы
-
 /* Претензии к Cuba REST Api
 1. Не умеет сортировать боле чем по одному полю
 2. Не умеет фильтровать по значению null

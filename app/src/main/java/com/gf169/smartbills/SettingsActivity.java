@@ -4,8 +4,11 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
+
+import static com.gf169.smartbills.Common.curActivity;
 
 public class SettingsActivity extends AppCompatActivity {
     private static String TAG = "gfSettingsActivity";
@@ -31,8 +34,11 @@ public class SettingsActivity extends AppCompatActivity {
                 .setText(settings.getString("cuba_base_url",
                         getResources().getString(R.string.cuba_base_url)));
         ((TextView) findViewById(R.id.cuba_base_url_2))
-                .setText(settings.getString("cuba_base_url_2",
+                .setText(settings.getString("cuba_base_url_2",  // TODO: 23.04.2019 Убрать 
                         getResources().getString(R.string.cuba_base_url_2)));
+        ((TextView) findViewById(R.id.cuba_base_url_3))
+                .setText(settings.getString("cuba_base_url_3",
+                        getResources().getString(R.string.cuba_base_url_3)));
         ((TextView) findViewById(R.id.cuba_tokens_url))
                 .setText(settings.getString("cuba_tokens_url",
                         getResources().getString(R.string.cuba_tokens_url)));
@@ -42,10 +48,25 @@ public class SettingsActivity extends AppCompatActivity {
 
         findViewById(R.id.buttonSettingsOk).setOnClickListener((View v) -> {
             saveSettings();
+            setResult(RESULT_OK, null);
             finish();
         });
 
         findViewById(R.id.buttonSettingsDefault).setOnClickListener((View v) -> setDefaults());
+    }
+
+    @Override
+    public void onPause() {
+        Log.d(TAG, "onPause");
+        super.onPause();
+    }
+
+    @Override
+    public void onResume() {
+        Log.d(TAG, "onResume");
+        super.onResume();
+
+        curActivity = this;
     }
 
     void saveSettings() {
@@ -59,6 +80,8 @@ public class SettingsActivity extends AppCompatActivity {
                 "" + ((TextView) findViewById(R.id.cuba_base_url)).getText());
         editor.putString("cuba_base_url_2",
                 "" + ((TextView) findViewById(R.id.cuba_base_url_2)).getText());
+        editor.putString("cuba_base_url_3",
+                "" + ((TextView) findViewById(R.id.cuba_base_url_3)).getText());
         editor.putString("cuba_tokens_url",
                 "" + ((TextView) findViewById(R.id.cuba_tokens_url)).getText());
         editor.putInt("max_request_duration",
@@ -76,6 +99,8 @@ public class SettingsActivity extends AppCompatActivity {
                 .setText(getResources().getString(R.string.cuba_base_url));
         ((TextView) findViewById(R.id.cuba_base_url_2))
                 .setText(getResources().getString(R.string.cuba_base_url_2));
+        ((TextView) findViewById(R.id.cuba_base_url_3))
+                .setText(getResources().getString(R.string.cuba_base_url_3));
         ((TextView) findViewById(R.id.cuba_tokens_url))
                 .setText(getResources().getString(R.string.cuba_tokens_url));
         ((TextView) findViewById(R.id.max_request_duration))

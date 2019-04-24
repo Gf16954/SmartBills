@@ -54,16 +54,4 @@ class ESMyViewHolder extends MainActivity.MyViewHolder {
 
         paintItem(v, isSelected, query);
     }
-/*
-    @Override
-    protected void paintItem(View v, boolean isSelected, Object entity) {
-        Entities.Query query = (Entities.Query) entity; // Entity Specific
-
-        int color = curActivity.getResources().getColor(isSelected ?
-                query.urgent ? R.color.colorItemUrgentSelected : R.color.colorItemSelected :
-                query.urgent ? R.color.colorItemUrgent : R.color.colorItem
-        );
-        v.setBackgroundColor(color);
-    }
-*/
 }

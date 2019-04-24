@@ -48,6 +48,7 @@ public class Common {
     static Class mainEntityClass;
     static Entities.ExtUser curUser;
     static Entities.Employee curEmployee;
+    static Workflow2.Workflow curWorkflow;
 
     public interface Get {
         String getId();
@@ -57,9 +58,9 @@ public class Common {
 
     public interface GetWorkflow {
         String getStepName();
-
         String getStatus();
 
+        String getWorkflowId();
         boolean hasActor(Entities.ExtUser extUser);
     }
 
@@ -326,48 +327,6 @@ public class Common {
         }
     }
 
-    /*
-        static <T> Set<T> searchEntities(
-                String entityName,
-                Class cl,
-                String view,
-                String filterProperty,
-                String filterOperator,
-                String filterValue,
-                String sort) {
-
-            Log.d(TAG, "searchEntities " +
-                    entityName + " " + filterProperty + " " + filterOperator + " " + filterValue);
-
-            Set<T> result = null;
-
-            String filterStr = null;
-            if (filterProperty != null) {
-                filterStr = "{\"conditions\":[{" +
-                        "\"property\":\"" + filterProperty + "\"," +
-                        "\"operator\":\"" + filterOperator + "\"," +
-                        "\"value\":";
-                filterStr += filterOperator.equals("in") ? "[" + filterValue + "]" : "\"" + filterValue + "\"";
-                filterStr += "}]}";
-            }
-
-            if (cr.getEntitiesList(entityName
-                    , filterStr, view, 0, 0, sort
-                    , false, false, false)) {
-                try {
-                    result = OM.readValue(cr.responseBodyStr,
-                            OM.getTypeFactory().constructCollectionType(Set.class, cl));
-                } catch (Exception e) {
-                    message(e.toString());
-                    e.printStackTrace();
-                }
-            } else {
-                message("Ошибка при поиске сущностей");
-            }
-            Log.d(TAG, "searchEntities " + (result == null ? "null" : result.toString()));
-            return result;
-        }
-    */
     static <T> ArrayList<T> searchEntities(
             String entityName,
             Class cl,
@@ -403,7 +362,7 @@ public class Common {
                 e.printStackTrace();
             }
         } else {
-            message("Ошибка при поиске сущностей");
+            message("Ошибка при поиске сущностей - " + entityName);
         }
         Log.d(TAG, "searchEntities " + (result == null ? "null" : result.toString()));
         return result;
@@ -458,6 +417,14 @@ public class Common {
         }
     }
 
+    public static ArrayList<String> getEditableFields(String workflowId, String stepName) {
+        if (stepName == null) {
+            return new ArrayList<>(Arrays.asList(ESMisc.getEditableFields()));
+        } else {
+            return Workflow2.getEditableFields(workflowId, stepName);
+        }
+    }
+
     static <T extends Get> String ids2Str(Collection<T> col) {  // Для строки фильтра
         if (col == null) return null;
         String s = "";
@@ -470,13 +437,13 @@ public class Common {
         curActivity.getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
         int height = displayMetrics.heightPixels;
         int width = displayMetrics.widthPixels;
-/*
+
         if (height<width) { // landscape
             int i = height;
             height = width;
             width = i;
         }
-*/
+
         height = (int) (height * relativeHeight);
         width = (int) (width * relativeWidth);
         ConstraintLayout.LayoutParams lp =
